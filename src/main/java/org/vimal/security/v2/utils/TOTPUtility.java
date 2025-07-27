@@ -36,15 +36,15 @@ public class TOTPUtility {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    private static String generateCurrentOTP(String base32Secret) throws InvalidKeyException {
+    private static String generateTOTP(String base32Secret) throws InvalidKeyException {
         var secretKey = decodeBase32Secret(base32Secret);
         var code = totp.generateOneTimePassword(secretKey, Instant.now());
         return String.format("%06d", code);
     }
 
-    public static boolean verifyOTP(String base32Secret,
-                                    String userInputCode) throws InvalidKeyException {
-        return generateCurrentOTP(base32Secret).equals(userInputCode);
+    public static boolean verifyTOTP(String base32Secret,
+                                     String userInputCode) throws InvalidKeyException {
+        return generateTOTP(base32Secret).equals(userInputCode);
     }
 
     public static SecretKey decodeBase32Secret(String base32Secret) {

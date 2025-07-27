@@ -1,6 +1,7 @@
 package org.vimal.security.v2.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.zxing.WriterException;
 import lombok.RequiredArgsConstructor;
 import org.jose4j.lang.JoseException;
 import org.springframework.http.MediaType;
@@ -14,6 +15,7 @@ import org.vimal.security.v2.services.AuthenticationService;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -96,7 +98,7 @@ public class AuthenticationController {
     }
 
     @PostMapping(path = "/MFA/generate/QRCode/toSetupAuthenticatorApp", produces = MediaType.IMAGE_PNG_VALUE)
-    public ResponseEntity<byte[]> generateQRCodeForAuthenticatorApp() {
+    public ResponseEntity<byte[]> generateQRCodeForAuthenticatorApp() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, IOException, InvalidKeyException, WriterException {
         return ResponseEntity.ok(authenticationService.generateQRCodeForAuthenticatorApp());
     }
 }

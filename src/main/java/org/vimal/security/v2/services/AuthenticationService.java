@@ -1,6 +1,7 @@
 package org.vimal.security.v2.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.zxing.WriterException;
 import io.getunleash.Unleash;
 import lombok.RequiredArgsConstructor;
 import org.jose4j.lang.JoseException;
@@ -12,22 +13,17 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.vimal.security.v2.converter.EmailOTPRandomConverter;
-import org.vimal.security.v2.converter.EmailOTPStaticConverter;
-import org.vimal.security.v2.converter.StateTokenRandomConverter;
-import org.vimal.security.v2.converter.StateTokenStaticConverter;
+import org.vimal.security.v2.converter.*;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.UserRepo;
-import org.vimal.security.v2.utils.CurrentUserUtility;
-import org.vimal.security.v2.utils.JWTUtility;
-import org.vimal.security.v2.utils.OTPUtility;
-import org.vimal.security.v2.utils.ValidationUtility;
+import org.vimal.security.v2.utils.*;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -43,6 +39,7 @@ public class AuthenticationService {
     private static final String STATE_TOKEN_PREFIX = "SECURITY_V2_STATE_TOKEN:";
     private static final String STATE_TOKEN_MAPPING_PREFIX = "SECURITY_V2_STATE_TOKEN_MAPPING:";
     private static final String EMAIL_MFA_OTP_PREFIX = "SECURITY_V2_EMAIL_MFA_OTP:";
+    private static final String AUTHENTICATOR_APP_SECRET_PREFIX = "SECURITY_V2_AUTHENTICATOR_APP_SECRET:";
     private final AuthenticationManager authenticationManager;
     private final JWTUtility jwtUtility;
     private final RedisService redisService;
@@ -53,6 +50,9 @@ public class AuthenticationService {
     private final StateTokenRandomConverter stateTokenRandomConverter;
     private final EmailOTPStaticConverter emailOTPStaticConverter;
     private final EmailOTPRandomConverter emailOTPRandomConverter;
+    private final AuthenticatorAppMFASecretStaticConverter authenticatorAppMFASecretStaticConverter;
+    private final AuthenticatorAppMFASecretRandomConverter authenticatorAppMFASecretRandomConverter;
+    private final AuthenticatorAppSecretRandomConverter authenticatorAppSecretRandomConverter;
     private final PasswordEncoder passwordEncoder;
 
     public Map<String, Object> loginUsername(String username,
@@ -340,9 +340,16 @@ public class AuthenticationService {
         return Map.of("message", "Email MFA disabled successfully. Please log in again to continue");
     }
 
-    public byte[] generateQRCodeForAuthenticatorApp() {
+    public byte[] generateQRCodeForAuthenticatorApp() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, WriterException {
         var user = CurrentUserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
             throw new BadRequestException("Authenticator app MFA is already enabled");
+        return QRUtility.generateQRCode(TOTPUtility.generateTOTPUrl("God Level Security", user.getUsername(), generateAuthenticatorAppSecret(user)));
+    }
+
+    public String generateAuthenticatorAppSecret(UserModel user) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var secret = TOTPUtility.generateBase32Secret();
+        redisService.save(authenticatorAppMFASecretStaticConverter.encrypt(AUTHENTICATOR_APP_SECRET_PREFIX + user.getId()), authenticatorAppMFASecretRandomConverter.encrypt(secret), RedisService.DEFAULT_TTL);
+        return secret;
     }
 }

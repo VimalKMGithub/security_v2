@@ -30,10 +30,8 @@ public class AESStaticUtility {
 
     public String encryptString(String data) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         var cipher = Cipher.getInstance(TRANSFORMATION);
-        var ivSpec = new IvParameterSpec(FIXED_IV);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
-        var encryptedBytes = cipher.doFinal(data.getBytes());
-        return Base64.getEncoder().encodeToString(encryptedBytes);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, new IvParameterSpec(FIXED_IV));
+        return Base64.getEncoder().encodeToString(cipher.doFinal(data.getBytes()));
     }
 
     public <T> T decrypt(String encryptedData,
@@ -43,9 +41,7 @@ public class AESStaticUtility {
 
     public String decryptString(String encryptedData) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         var cipher = Cipher.getInstance(TRANSFORMATION);
-        var ivSpec = new IvParameterSpec(FIXED_IV);
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
-        var decodedBytes = Base64.getDecoder().decode(encryptedData);
-        return new String(cipher.doFinal(decodedBytes));
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(FIXED_IV));
+        return new String(cipher.doFinal(Base64.getDecoder().decode(encryptedData)));
     }
 }

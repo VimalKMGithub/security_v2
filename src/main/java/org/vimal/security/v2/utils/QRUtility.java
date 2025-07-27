@@ -19,10 +19,8 @@ public class QRUtility {
     public static byte[] generateQRCode(String content,
                                         int size,
                                         String format) throws WriterException, IOException {
-        var qrCodeWriter = new QRCodeWriter();
-        var bitMatrix = qrCodeWriter.encode(content, BarcodeFormat.QR_CODE, size, size);
         var outputStream = new ByteArrayOutputStream();
-        MatrixToImageWriter.writeToStream(bitMatrix, format, outputStream);
+        MatrixToImageWriter.writeToStream(new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size), format, outputStream);
         return outputStream.toByteArray();
     }
 }

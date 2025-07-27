@@ -18,8 +18,7 @@ public class TOTPUtility {
     public static String generateBase32Secret() throws NoSuchAlgorithmException {
         var keyGenerator = KeyGenerator.getInstance(totp.getAlgorithm());
         keyGenerator.init(160);
-        var secretKey = keyGenerator.generateKey();
-        return new Base32().encodeToString(secretKey.getEncoded()).replace("=", "");
+        return new Base32().encodeToString(keyGenerator.generateKey().getEncoded()).replace("=", "");
     }
 
     public static String generateTOTPUrl(String issuer, String accountName, String base32Secret) {
@@ -37,9 +36,7 @@ public class TOTPUtility {
     }
 
     private static String generateTOTP(String base32Secret) throws InvalidKeyException {
-        var secretKey = decodeBase32Secret(base32Secret);
-        var code = totp.generateOneTimePassword(secretKey, Instant.now());
-        return String.format("%06d", code);
+        return String.format("%06d", totp.generateOneTimePassword(decodeBase32Secret(base32Secret), Instant.now()));
     }
 
     public static boolean verifyTOTP(String base32Secret,
@@ -48,7 +45,6 @@ public class TOTPUtility {
     }
 
     public static SecretKey decodeBase32Secret(String base32Secret) {
-        var keyBytes = new Base32().decode(base32Secret);
-        return new SecretKeySpec(keyBytes, totp.getAlgorithm());
+        return new SecretKeySpec(new Base32().decode(base32Secret), totp.getAlgorithm());
     }
 }

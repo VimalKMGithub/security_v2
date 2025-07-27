@@ -31,10 +31,8 @@ public class AESRandomUtility {
         var iv = new byte[GCM_IV_LENGTH];
         secureRandom.nextBytes(iv);
         var cipher = Cipher.getInstance(TRANSFORMATION);
-        var gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmParameterSpec);
-        var encryptedBytes = cipher.doFinal(data.getBytes());
-        return Base64.getEncoder().encodeToString(iv) + ":" + Base64.getEncoder().encodeToString(encryptedBytes);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
+        return Base64.getEncoder().encodeToString(iv) + ":" + Base64.getEncoder().encodeToString(cipher.doFinal(data.getBytes()));
     }
 
     public <T> T decrypt(String encryptedData,
@@ -44,11 +42,8 @@ public class AESRandomUtility {
 
     public String decryptString(String encryptedData) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         var parts = encryptedData.split(":");
-        var iv = Base64.getDecoder().decode(parts[0]);
-        var encryptedBytes = Base64.getDecoder().decode(parts[1]);
         var cipher = Cipher.getInstance(TRANSFORMATION);
-        var gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmParameterSpec);
-        return new String(cipher.doFinal(encryptedBytes));
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(GCM_TAG_LENGTH, Base64.getDecoder().decode(parts[0])));
+        return new String(cipher.doFinal(Base64.getDecoder().decode(parts[1])));
     }
 }

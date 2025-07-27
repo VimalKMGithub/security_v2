@@ -94,8 +94,11 @@ public class AuthenticationService {
     }
 
     public UUID generateStateToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var stateToken = UUID.randomUUID();
         var encryptedStateTokenKey = stateTokenStaticConverter.encrypt(STATE_TOKEN_PREFIX + user.getId());
+        var existingEncryptedStateToken = redisService.get(encryptedStateTokenKey);
+        if (existingEncryptedStateToken != null)
+            return stateTokenRandomConverter.decrypt((String) existingEncryptedStateToken, UUID.class);
+        var stateToken = UUID.randomUUID();
         var encryptedStateTokenMappingKey = stateTokenStaticConverter.encrypt(STATE_TOKEN_MAPPING_PREFIX + stateToken);
         try {
             redisService.save(encryptedStateTokenKey, stateTokenRandomConverter.encrypt(stateToken), RedisService.DEFAULT_TTL);

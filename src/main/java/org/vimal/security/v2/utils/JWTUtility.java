@@ -78,10 +78,7 @@ public class JWTUtility {
 
     public UUID generateJWTId(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var jwtId = UUID.randomUUID();
-        var redisKey = JWT_ID_PREFIX + user.getId();
-        var encryptedKey = jwtStaticConverter.encrypt(redisKey);
-        var encryptedValue = jwtRandomConverter.encrypt(jwtId);
-        redisService.save(encryptedKey, encryptedValue, Duration.ofSeconds(ACCESS_TOKEN_EXPIRES_IN_SECONDS));
+        redisService.save(jwtStaticConverter.encrypt(JWT_ID_PREFIX + user.getId()), jwtRandomConverter.encrypt(jwtId), Duration.ofSeconds(ACCESS_TOKEN_EXPIRES_IN_SECONDS));
         return jwtId;
     }
 
@@ -127,19 +124,15 @@ public class JWTUtility {
     }
 
     public UUID generateRefreshToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var refreshTokenKey = REFRESH_TOKEN_PREFIX + user.getId();
-        var encryptedRefreshTokenKey = refreshTokenStaticConverter.encrypt(refreshTokenKey);
-        var existingRefreshToken = redisService.get(encryptedRefreshTokenKey);
-        if (existingRefreshToken != null)
-            return refreshTokenRandomConverter.decrypt((String) existingRefreshToken, UUID.class);
+        var encryptedRefreshTokenKey = refreshTokenStaticConverter.encrypt(REFRESH_TOKEN_PREFIX + user.getId());
+        var existingEncryptedRefreshToken = redisService.get(encryptedRefreshTokenKey);
+        if (existingEncryptedRefreshToken != null)
+            return refreshTokenRandomConverter.decrypt((String) existingEncryptedRefreshToken, UUID.class);
         var refreshToken = UUID.randomUUID();
-        var refreshTokenMappingKey = REFRESH_TOKEN_MAPPING_PREFIX + refreshToken;
-        var encryptedRefreshTokenMappingKey = refreshTokenStaticConverter.encrypt(refreshTokenMappingKey);
+        var encryptedRefreshTokenMappingKey = refreshTokenStaticConverter.encrypt(REFRESH_TOKEN_MAPPING_PREFIX + refreshToken);
         try {
-            var encryptedRefreshToken = refreshTokenRandomConverter.encrypt(refreshToken);
-            redisService.save(encryptedRefreshTokenKey, encryptedRefreshToken, Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS));
-            var encryptedUserId = refreshTokenRandomConverter.encrypt(user.getId());
-            redisService.save(encryptedRefreshTokenMappingKey, encryptedUserId, Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS));
+            redisService.save(encryptedRefreshTokenKey, refreshTokenRandomConverter.encrypt(refreshToken), Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS));
+            redisService.save(encryptedRefreshTokenMappingKey, refreshTokenRandomConverter.encrypt(user.getId()), Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS));
             return refreshToken;
         } catch (Exception ex) {
             redisService.delete(encryptedRefreshTokenKey);
@@ -149,10 +142,8 @@ public class JWTUtility {
     }
 
     public Map<String, Object> generateAccessToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
-        var claims = buildTokenClaims(user);
-        var jws = signToken(claims);
         var accessToken = new HashMap<String, Object>();
-        accessToken.put("access_token", encryptToken(jws));
+        accessToken.put("access_token", encryptToken(signToken(buildTokenClaims(user))));
         accessToken.put("expires_in_seconds", ACCESS_TOKEN_EXPIRES_IN_SECONDS);
         accessToken.put("token_type", "Bearer");
         return accessToken;

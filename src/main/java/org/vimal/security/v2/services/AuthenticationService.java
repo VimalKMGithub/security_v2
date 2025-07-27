@@ -433,4 +433,31 @@ public class AuthenticationService {
         }
         return jwtUtility.generateTokens(user);
     }
+
+    public Map<String, String> verifyTOTPToDisableAuthenticatorAppMFA(String totp,
+                                                                      String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+            throw new BadRequestException("Authenticator app MFA is disabled globally");
+        try {
+            ValidationUtility.validateOTP(totp, "TOTP");
+            ValidationUtility.validatePassword(password);
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid TOTP or password");
+        }
+        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+            throw new BadRequestException("Authenticator app MFA is already disabled");
+        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp))
+            throw new BadRequestException("Invalid TOTP");
+        if (!passwordEncoder.matches(password, user.getPassword())) throw new BadRequestException("Invalid password");
+        user.disableMfaMethod(UserModel.MfaType.AUTHENTICATOR_APP);
+        user.setAuthAppSecret(null);
+        user.setUpdatedBy("SELF");
+        jwtUtility.revokeAccessToken(user);
+        jwtUtility.revokeRefreshToken(user);
+        userRepo.save(user);
+        return Map.of("message", "Authenticator app MFA disabled successfully. Please log in again to continue");
+    }
 }

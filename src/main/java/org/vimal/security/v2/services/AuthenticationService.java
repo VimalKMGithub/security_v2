@@ -339,4 +339,10 @@ public class AuthenticationService {
         userRepo.save(user);
         return Map.of("message", "Email MFA disabled successfully. Please log in again to continue");
     }
+
+    public byte[] generateQRCodeForAuthenticatorApp() {
+        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+            throw new BadRequestException("Authenticator app MFA is already enabled");
+    }
 }

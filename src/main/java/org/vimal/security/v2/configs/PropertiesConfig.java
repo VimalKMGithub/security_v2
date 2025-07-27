@@ -16,6 +16,9 @@ public class PropertiesConfig {
     private String stateTokenSecretRandom;
     private String emailOtpSecretStatic;
     private String emailOtpSecretRandom;
+    private String authenticatorAppMfaSecretStatic;
+    private String authenticatorAppMfaSecretRandom;
+    private String authenticatorAppSecretRandom;
     private String mailDisplayName;
     private String helpMailAddress;
     private String godUserUsername;

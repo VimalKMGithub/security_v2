@@ -97,4 +97,24 @@ public class ValidationUtility {
                                    String fieldName) {
         validateOTP(otp, fieldName, DEFAULT_OTP_LENGTH);
     }
+
+    public static void validateFirstName(String firstName) {
+        validateStringLengthRange(firstName, "First Name", 1, 50);
+        if (!NAME_PATTERN.matcher(firstName).matches())
+            throw new BadRequestException("First Name: '" + firstName + "' is invalid as it can only contain letters, spaces, periods, apostrophes, and hyphens");
+    }
+
+    public static void validateMiddleName(String middleName) {
+        if (Objects.isNull(middleName)) return;
+        validateStringLengthRange(middleName, "Middle Name", 1, 50);
+        if (!NAME_PATTERN.matcher(middleName).matches())
+            throw new BadRequestException("Middle Name: '" + middleName + "' is invalid as it can only contain letters, spaces, periods, apostrophes, and hyphens");
+    }
+
+    public static void validateLastName(String lastName) {
+        if (Objects.isNull(lastName)) return;
+        validateStringLengthRange(lastName, "Last Name", 1, 50);
+        if (!NAME_PATTERN.matcher(lastName).matches())
+            throw new BadRequestException("Last Name: '" + lastName + "' is invalid as it can only contain letters, spaces, periods, apostrophes, and hyphens");
+    }
 }

@@ -83,5 +83,14 @@ public class AuthenticationController {
         return ResponseEntity.ok(authenticationService.verifyEmailOTPToLogin(otp, stateToken));
     }
 
-//    @PostMapping("/MFA/disable/emailMFA")
+    @PostMapping("/MFA/send/email/OTP/toDisableEmailMFA")
+    public ResponseEntity<Map<String, String>> sendEmailOTPToDisableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(authenticationService.sendEmailOTPToDisableEmailMFA());
+    }
+
+    @PostMapping("/MFA/verify/email/OTP/toDisableEmailMFA")
+    public ResponseEntity<Map<String, String>> verifyEmailOTPToDisableEmailMFA(@RequestParam String otp,
+                                                                               @RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(authenticationService.verifyEmailOTPToDisableEmailMFA(otp, password));
+    }
 }

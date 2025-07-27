@@ -10,6 +10,7 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.vimal.security.v2.converter.EmailOTPRandomConverter;
 import org.vimal.security.v2.converter.EmailOTPStaticConverter;
@@ -52,6 +53,7 @@ public class AuthenticationService {
     private final StateTokenRandomConverter stateTokenRandomConverter;
     private final EmailOTPStaticConverter emailOTPStaticConverter;
     private final EmailOTPRandomConverter emailOTPRandomConverter;
+    private final PasswordEncoder passwordEncoder;
 
     public Map<String, Object> loginUsername(String username,
                                              String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -206,7 +208,7 @@ public class AuthenticationService {
         }
         var user = CurrentUserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) throw new BadRequestException("Email MFA is already enabled");
-        verifyOTPToEnableEmailMfa(user, otp);
+        verifyOTPToToggleEmailMfa(user, otp);
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
         user.enableMfaMethod(UserModel.MfaType.EMAIL);
         user.setUpdatedBy("SELF");
@@ -216,7 +218,7 @@ public class AuthenticationService {
         return Map.of("message", "Email MFA enabled successfully. Please log in again to continue");
     }
 
-    public void verifyOTPToEnableEmailMfa(UserModel user,
+    public void verifyOTPToToggleEmailMfa(UserModel user,
                                           String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedEmailOTPToEnableEmailMFAKey = emailOTPStaticConverter.encrypt(EMAIL_MFA_OTP_PREFIX + user.getId());
         var encryptedOTP = redisService.get(encryptedEmailOTPToEnableEmailMFAKey);
@@ -302,5 +304,39 @@ public class AuthenticationService {
     public void handleFailedMFALoginAttempt(UserModel user) {
         user.recordFailedMfaAttempt();
         userRepo.save(user);
+    }
+
+    public Map<String, String> sendEmailOTPToDisableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled("MFA_EMAIL")) throw new BadRequestException("Email MFA is disabled globally");
+        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL))
+            throw new BadRequestException("Email MFA is already disabled");
+        mailService.sendOtpAsync(user.getEmail(), "OTP to disable email MFA", generateOTPForEmailMFA(user));
+        return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+    }
+
+    public Map<String, String> verifyEmailOTPToDisableEmailMFA(String otp,
+                                                               String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled("MFA_EMAIL")) throw new BadRequestException("Email MFA is disabled globally");
+        try {
+            ValidationUtility.validateOTP(otp, "OTP");
+            ValidationUtility.validatePassword(password);
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid OTP or password");
+        }
+        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL))
+            throw new BadRequestException("Email MFA is already disabled");
+        verifyOTPToToggleEmailMfa(user, otp);
+        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+        if (!passwordEncoder.matches(password, user.getPassword())) throw new BadRequestException("Invalid password");
+        user.disableMfaMethod(UserModel.MfaType.EMAIL);
+        user.setUpdatedBy("SELF");
+        jwtUtility.revokeAccessToken(user);
+        jwtUtility.revokeRefreshToken(user);
+        userRepo.save(user);
+        return Map.of("message", "Email MFA disabled successfully. Please log in again to continue");
     }
 }

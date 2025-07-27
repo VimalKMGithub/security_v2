@@ -341,6 +341,9 @@ public class AuthenticationService {
     }
 
     public byte[] generateQRCodeForAuthenticatorApp() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, WriterException {
+        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled("MFA_AUTHENTICATOR_APP"))
+            throw new BadRequestException("Authenticator app MFA is disabled globally");
         var user = CurrentUserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
             throw new BadRequestException("Authenticator app MFA is already enabled");

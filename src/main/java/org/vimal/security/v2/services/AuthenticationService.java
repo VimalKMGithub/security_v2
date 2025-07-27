@@ -73,7 +73,7 @@ public class AuthenticationService {
 
     public Map<String, Object> handleSuccessfulLogin(Authentication authentication) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = ((UserDetailsImpl) authentication.getPrincipal()).getUserModel();
-        if (user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
+        if (unleash.isEnabled("MFA") && user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
             return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", user.getEnabledMfaMethods());
         }
         return jwtUtility.generateTokens(user);

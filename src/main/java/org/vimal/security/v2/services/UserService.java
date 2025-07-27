@@ -55,8 +55,7 @@ public class UserService {
             user.setEmailVerified(!shouldVerifyRegisteredEmail);
             if (shouldVerifyRegisteredEmail)
                 mailService.sendLinkEmailAsync(user.getEmail(), "Email verification after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
-            userRepo.save(user);
-            return ResponseEntity.ok(Map.of("message", "Registration successful", "user", user));
+            return ResponseEntity.ok(Map.of("message", "Registration successful", "user", userRepo.save(user)));
         }
         throw new BadRequestException("Registration is currently disabled. Please try again later");
     }

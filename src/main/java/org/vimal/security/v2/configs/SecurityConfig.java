@@ -46,7 +46,8 @@ public class SecurityConfig {
             API_VERSION + AUTH + "/refresh/accessToken",
             API_VERSION + AUTH + "/revoke/refreshToken",
             API_VERSION + AUTH + MFA + "/send/email/OTP/toVerifyEmailMFAToLogin",
-            API_VERSION + AUTH + MFA + "/verify/email/OTP/toLogin"
+            API_VERSION + AUTH + MFA + "/verify/email/OTP/toLogin",
+            API_VERSION + AUTH + MFA + "/verify/TOTP/toLogin"
     };
     private final JWTFilterUtility jwtFilterUtility;
 

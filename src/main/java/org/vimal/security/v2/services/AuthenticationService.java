@@ -406,13 +406,31 @@ public class AuthenticationService {
         throw new BadRequestException("Invalid TOTP");
     }
 
-//    public Map<String, Object> verifyTOTPToLogin(String totp,
-//                                                 String stateToken) {
-//        try {
-//            ValidationUtility.validateOTP(totp, "TOTP");
-//            ValidationUtility.validateUuid(stateToken, "State token");
-//        } catch (BadRequestException ex) {
-//            throw new BadRequestException("Invalid TOTP or state token");
-//        }
-//    }
+    public Map<String, Object> verifyTOTPToLogin(String totp,
+                                                 String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+            throw new BadRequestException("Authenticator app MFA is disabled globally");
+        try {
+            ValidationUtility.validateOTP(totp, "TOTP");
+            ValidationUtility.validateUuid(stateToken, "State token");
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid TOTP or state token");
+        }
+        var encryptedStateTokenMappingKey = getEncryptedStateTokenMappingKey(stateToken);
+        var user = userRepo.findById(getUserIdFromEncryptedStateTokenMappingKey(encryptedStateTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid state token"));
+        if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+            throw new BadRequestException("Authenticator app MFA is not enabled");
+        if (user.isAccountLocked() && user.getLastLockedAt().plus(1, ChronoUnit.DAYS).isAfter(Instant.now()))
+            throw new LockedException("Account is locked due to too many failed mfa attempts. Please try again later");
+        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp)) {
+            handleFailedMFALoginAttempt(user);
+            throw new BadRequestException("Invalid TOTP");
+        }
+        try {
+            redisService.delete(Set.of(stateTokenStaticConverter.encrypt(STATE_TOKEN_PREFIX + user.getId()), encryptedStateTokenMappingKey));
+        } catch (Exception ignored) {
+        }
+        return jwtUtility.generateTokens(user);
+    }
 }

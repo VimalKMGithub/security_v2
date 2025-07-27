@@ -397,13 +397,13 @@ public class AuthenticationService {
         throw new BadRequestException("Invalid TOTP");
     }
 
-    public Map<String, Object> verifyTOTPToLogin(String totp,
-                                                 String stateToken) {
-        try {
-            ValidationUtility.validateOTP(totp, "TOTP");
-            ValidationUtility.validateUuid(stateToken, "State token");
-        } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid TOTP or state token");
-        }
-    }
+//    public Map<String, Object> verifyTOTPToLogin(String totp,
+//                                                 String stateToken) {
+//        try {
+//            ValidationUtility.validateOTP(totp, "TOTP");
+//            ValidationUtility.validateUuid(stateToken, "State token");
+//        } catch (BadRequestException ex) {
+//            throw new BadRequestException("Invalid TOTP or state token");
+//        }
+//    }
 }

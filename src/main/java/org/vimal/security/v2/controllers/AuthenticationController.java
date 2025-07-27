@@ -107,9 +107,9 @@ public class AuthenticationController {
         return ResponseEntity.ok(authenticationService.verifyTOTPToSetupAuthenticatorApp(totp));
     }
 
-    @PostMapping("/MFA/verify/TOTP/toLogin")
-    public ResponseEntity<Map<String, Object>> verifyTOTPToLogin(@RequestParam String totp,
-                                                                 @RequestParam String stateToken) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.verifyTOTPToLogin(totp, stateToken));
-    }
+//    @PostMapping("/MFA/verify/TOTP/toLogin")
+//    public ResponseEntity<Map<String, Object>> verifyTOTPToLogin(@RequestParam String totp,
+//                                                                 @RequestParam String stateToken) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+//        return ResponseEntity.ok(authenticationService.verifyTOTPToLogin(totp, stateToken));
+//    }
 }

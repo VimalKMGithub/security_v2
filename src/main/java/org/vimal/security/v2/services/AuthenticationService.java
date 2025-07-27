@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.vimal.security.v2.converter.*;
+import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
@@ -75,18 +76,18 @@ public class AuthenticationService {
 
     public Map<String, Object> handleSuccessfulLogin(Authentication authentication) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = ((UserDetailsImpl) authentication.getPrincipal()).getUserModel();
-        if (unleash.isEnabled("MFA")) {
+        if (unleash.isEnabled(FeatureFlags.MFA.name())) {
             if (user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
                 var shouldDoMFA = false;
-                var unleashEmailMFA = unleash.isEnabled("MFA_EMAIL");
-                var unleashAuthenticatorAppMFA = unleash.isEnabled("MFA_AUTHENTICATOR_APP");
+                var unleashEmailMFA = unleash.isEnabled(FeatureFlags.MFA_EMAIL.name());
+                var unleashAuthenticatorAppMFA = unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name());
                 if (unleashEmailMFA && user.hasMfaEnabled(UserModel.MfaType.EMAIL)) shouldDoMFA = true;
                 else if (unleashAuthenticatorAppMFA && user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
                     shouldDoMFA = true;
                 if (shouldDoMFA)
                     return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", user.getEnabledMfaMethods());
             }
-            if (unleash.isEnabled("FORCE_MFA"))
+            if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name()))
                 return Map.of("message", "MFA required. Please continue with email MFA", "state_token", generateStateToken(user));
         }
         return jwtUtility.generateTokens(user);
@@ -184,8 +185,9 @@ public class AuthenticationService {
     }
 
     public Map<String, String> sendEmailOTPToEnableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled("MFA_EMAIL")) throw new BadRequestException("Email MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+            throw new BadRequestException("Email MFA is disabled globally");
         var user = CurrentUserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) throw new BadRequestException("Email MFA is already enabled");
         mailService.sendOtpAsync(user.getEmail(), "OTP to enable email MFA", generateOTPForEmailMFA(user));
@@ -199,8 +201,9 @@ public class AuthenticationService {
     }
 
     public Map<String, String> verifyEmailOTPToEnableEmailMFA(String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled("MFA_EMAIL")) throw new BadRequestException("Email MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+            throw new BadRequestException("Email MFA is disabled globally");
         try {
             ValidationUtility.validateOTP(otp, "OTP");
         } catch (BadRequestException ex) {
@@ -233,16 +236,18 @@ public class AuthenticationService {
     }
 
     public Map<String, String> sendEmailOTPToVerifyEmailMFAToLogin(String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled("FORCE_MFA"))
-            if (!unleash.isEnabled("MFA_EMAIL")) throw new BadRequestException("Email MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        var forcedMFA = unleash.isEnabled(FeatureFlags.FORCE_MFA.name());
+        if (!forcedMFA) if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+            throw new BadRequestException("Email MFA is disabled globally");
         try {
             ValidationUtility.validateUuid(stateToken, "State token");
         } catch (BadRequestException ex) {
             throw new BadRequestException("Invalid state token");
         }
         var user = getUser(stateToken);
-        if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL)) throw new BadRequestException("Email MFA is not enabled");
+        if (!forcedMFA && !user.hasMfaEnabled(UserModel.MfaType.EMAIL))
+            throw new BadRequestException("Email MFA is not enabled");
         mailService.sendOtpAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user));
         return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
     }
@@ -263,9 +268,10 @@ public class AuthenticationService {
 
     public Map<String, Object> verifyEmailOTPToLogin(String otp,
                                                      String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
-        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled("FORCE_MFA"))
-            if (!unleash.isEnabled("MFA_EMAIL")) throw new BadRequestException("Email MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        var forcedMFA = unleash.isEnabled(FeatureFlags.FORCE_MFA.name());
+        if (!forcedMFA) if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+            throw new BadRequestException("Email MFA is disabled globally");
         try {
             ValidationUtility.validateOTP(otp, "OTP");
             ValidationUtility.validateUuid(stateToken, "State token");
@@ -274,7 +280,8 @@ public class AuthenticationService {
         }
         var encryptedStateTokenMappingKey = getEncryptedStateTokenMappingKey(stateToken);
         var user = userRepo.findById(getUserIdFromEncryptedStateTokenMappingKey(encryptedStateTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid state token"));
-        if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL)) throw new BadRequestException("Email MFA is not enabled");
+        if (!forcedMFA && !user.hasMfaEnabled(UserModel.MfaType.EMAIL))
+            throw new BadRequestException("Email MFA is not enabled");
         verifyOTPToLogin(user, otp);
         try {
             redisService.delete(Set.of(stateTokenStaticConverter.encrypt(STATE_TOKEN_PREFIX + user.getId()), encryptedStateTokenMappingKey));
@@ -307,8 +314,9 @@ public class AuthenticationService {
     }
 
     public Map<String, String> sendEmailOTPToDisableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled("MFA_EMAIL")) throw new BadRequestException("Email MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+            throw new BadRequestException("Email MFA is disabled globally");
         var user = CurrentUserUtility.getCurrentAuthenticatedUser();
         if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL))
             throw new BadRequestException("Email MFA is already disabled");
@@ -318,8 +326,9 @@ public class AuthenticationService {
 
     public Map<String, String> verifyEmailOTPToDisableEmailMFA(String otp,
                                                                String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled("MFA_EMAIL")) throw new BadRequestException("Email MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+            throw new BadRequestException("Email MFA is disabled globally");
         try {
             ValidationUtility.validateOTP(otp, "OTP");
             ValidationUtility.validatePassword(password);
@@ -341,8 +350,8 @@ public class AuthenticationService {
     }
 
     public byte[] generateQRCodeForAuthenticatorApp() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, WriterException {
-        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled("MFA_AUTHENTICATOR_APP"))
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
             throw new BadRequestException("Authenticator app MFA is disabled globally");
         var user = CurrentUserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
@@ -357,8 +366,8 @@ public class AuthenticationService {
     }
 
     public Map<String, String> verifyTOTPToSetupAuthenticatorApp(String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled("MFA_AUTHENTICATOR_APP"))
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
             throw new BadRequestException("Authenticator app MFA is disabled globally");
         try {
             ValidationUtility.validateOTP(totp, "TOTP");

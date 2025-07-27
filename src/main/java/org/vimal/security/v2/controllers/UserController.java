@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.vimal.security.v2.dtos.RegistrationDto;
+import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.services.UserService;
 
 import javax.crypto.BadPaddingException;
@@ -27,5 +28,10 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> register(@RequestBody RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.register(dto);
+    }
+
+    @PostMapping("/getSelfDetails")
+    public ResponseEntity<UserSummaryDto> getSelfDetails() {
+        return ResponseEntity.ok(userService.getSelfDetails());
     }
 }

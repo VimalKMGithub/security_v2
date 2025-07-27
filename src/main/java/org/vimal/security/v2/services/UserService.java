@@ -9,11 +9,14 @@ import org.springframework.stereotype.Service;
 import org.vimal.security.v2.converter.EmailVerificationTokenRandomConverter;
 import org.vimal.security.v2.converter.EmailVerificationTokenStaticConverter;
 import org.vimal.security.v2.dtos.RegistrationDto;
+import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.UserRepo;
+import org.vimal.security.v2.utils.CurrentUserUtility;
 import org.vimal.security.v2.utils.InputValidationUtility;
+import org.vimal.security.v2.utils.MapperUtility;
 import org.vimal.security.v2.utils.SanitizerUtility;
 
 import javax.crypto.BadPaddingException;
@@ -90,5 +93,10 @@ public class UserService {
             redisService.delete(encryptedEmailVerificationTokenMappingKey);
             throw new RuntimeException("Failed to generate email verification token", ex);
         }
+    }
+
+    public UserSummaryDto getSelfDetails() {
+        var user = userRepo.findById(CurrentUserUtility.getCurrentAuthenticatedUser().getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+        return MapperUtility.toUserSummaryDto(user);
     }
 }

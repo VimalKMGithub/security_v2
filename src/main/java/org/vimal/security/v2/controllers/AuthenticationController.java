@@ -118,5 +118,4 @@ public class AuthenticationController {
                                                                                       @RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(authenticationService.verifyTOTPToDisableAuthenticatorAppMFA(totp, password));
     }
-
 }

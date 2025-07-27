@@ -26,4 +26,6 @@ public class PropertiesConfig {
     private String globalAdminUserPassword;
     private String jwtSigningSecret;
     private String jwtEncryptionSecret;
+    private String unleashUrl;
+    private String unleashApiToken;
 }

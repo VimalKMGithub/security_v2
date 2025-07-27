@@ -101,4 +101,9 @@ public class AuthenticationController {
     public ResponseEntity<byte[]> generateQRCodeForAuthenticatorApp() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, IOException, InvalidKeyException, WriterException {
         return ResponseEntity.ok(authenticationService.generateQRCodeForAuthenticatorApp());
     }
+
+    @PostMapping("/MFA/verify/TOTP/toSetupAuthenticatorApp")
+    public ResponseEntity<Map<String, String>> verifyTOTPToSetupAuthenticatorApp(@RequestParam String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(authenticationService.verifyTOTPToSetupAuthenticatorApp(totp));
+    }
 }

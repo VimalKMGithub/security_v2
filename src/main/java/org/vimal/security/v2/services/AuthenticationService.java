@@ -355,4 +355,45 @@ public class AuthenticationService {
         redisService.save(authenticatorAppMFASecretStaticConverter.encrypt(AUTHENTICATOR_APP_SECRET_PREFIX + user.getId()), authenticatorAppMFASecretRandomConverter.encrypt(secret), RedisService.DEFAULT_TTL);
         return secret;
     }
+
+    public Map<String, String> verifyTOTPToSetupAuthenticatorApp(String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (!unleash.isEnabled("MFA")) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled("MFA_AUTHENTICATOR_APP"))
+            throw new BadRequestException("Authenticator app MFA is disabled globally");
+        try {
+            ValidationUtility.validateOTP(totp, "TOTP");
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid TOTP");
+        }
+        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+            throw new BadRequestException("Authenticator app MFA is already enabled");
+        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+        verifyTOTP(user, totp);
+        jwtUtility.revokeAccessToken(user);
+        jwtUtility.revokeRefreshToken(user);
+        userRepo.save(user);
+        return Map.of("message", "Authenticator app MFA enabled successfully. Please log in again to continue");
+    }
+
+    public void verifyTOTP(UserModel user,
+                           String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var encryptedSecretKey = authenticatorAppMFASecretStaticConverter.encrypt(AUTHENTICATOR_APP_SECRET_PREFIX + user.getId());
+        var encryptedSecret = redisService.get(encryptedSecretKey);
+        if (encryptedSecret != null) {
+            var secret = authenticatorAppMFASecretRandomConverter.decrypt((String) encryptedSecret, String.class);
+            if (TOTPUtility.verifyTOTP(secret, totp)) {
+                user.enableMfaMethod(UserModel.MfaType.AUTHENTICATOR_APP);
+                user.setAuthAppSecret(authenticatorAppSecretRandomConverter.encrypt(secret));
+                user.setUpdatedBy("SELF");
+                try {
+                    redisService.delete(encryptedSecretKey);
+                } catch (Exception ignored) {
+                }
+                return;
+            }
+            throw new BadRequestException("Invalid TOTP");
+        }
+        throw new BadRequestException("Invalid TOTP");
+    }
 }

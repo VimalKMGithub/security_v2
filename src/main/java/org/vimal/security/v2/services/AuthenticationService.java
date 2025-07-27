@@ -73,8 +73,15 @@ public class AuthenticationService {
 
     public Map<String, Object> handleSuccessfulLogin(Authentication authentication) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = ((UserDetailsImpl) authentication.getPrincipal()).getUserModel();
-        if (unleash.isEnabled("MFA") && unleash.isEnabled("MFA_EMAIL") && unleash.isEnabled("MFA_AUTHENTICATOR_APP") && user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
-            return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", user.getEnabledMfaMethods());
+        if (unleash.isEnabled("MFA") && user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
+            var shouldDoMFA = false;
+            var unleashEmailMFA = unleash.isEnabled("MFA_EMAIL");
+            var unleashAuthenticatorAppMFA = unleash.isEnabled("MFA_AUTHENTICATOR_APP");
+            if (unleashEmailMFA && user.hasMfaEnabled(UserModel.MfaType.EMAIL)) shouldDoMFA = true;
+            else if (unleashAuthenticatorAppMFA && user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                shouldDoMFA = true;
+            if (shouldDoMFA)
+                return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", user.getEnabledMfaMethods());
         }
         return jwtUtility.generateTokens(user);
     }

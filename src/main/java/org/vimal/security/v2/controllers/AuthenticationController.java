@@ -3,6 +3,7 @@ package org.vimal.security.v2.controllers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import org.jose4j.lang.JoseException;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -92,5 +93,10 @@ public class AuthenticationController {
     public ResponseEntity<Map<String, String>> verifyEmailOTPToDisableEmailMFA(@RequestParam String otp,
                                                                                @RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(authenticationService.verifyEmailOTPToDisableEmailMFA(otp, password));
+    }
+
+    @PostMapping(path = "/MFA/generate/QRCode/toSetupAuthenticatorApp", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> generateQRCodeForAuthenticatorApp() {
+        return ResponseEntity.ok(authenticationService.generateQRCodeForAuthenticatorApp());
     }
 }

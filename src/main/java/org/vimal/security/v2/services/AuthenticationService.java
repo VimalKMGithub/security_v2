@@ -82,8 +82,7 @@ public class AuthenticationService {
                 shouldDoMFA = true;
             if (shouldDoMFA)
                 return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", user.getEnabledMfaMethods());
-            var isMFAForced = unleash.isEnabled("FORCE_MFA");
-            if (isMFAForced)
+            if (unleash.isEnabled("FORCE_MFA"))
                 return Map.of("message", "MFA required. Please continue with email MFA", "state_token", generateStateToken(user));
         }
         return jwtUtility.generateTokens(user);

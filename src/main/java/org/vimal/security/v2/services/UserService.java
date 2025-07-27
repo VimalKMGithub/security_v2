@@ -9,6 +9,7 @@ import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.repos.UserRepo;
 import org.vimal.security.v2.utils.InputValidationUtility;
+import org.vimal.security.v2.utils.SanitizerUtility;
 
 import java.util.Map;
 
@@ -25,6 +26,9 @@ public class UserService {
                 return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
             if (userRepo.existsByUsername(dto.username))
                 throw new BadRequestException("Username: '" + dto.username + "' is already taken");
+            if (userRepo.existsByEmail(dto.email))
+                throw new BadRequestException("Email: '" + dto.email + "' is already registered");
+            var sanitizedEmail = SanitizerUtility.sanitizeEmail(dto.email);
         }
         throw new BadRequestException("Registration is currently disabled. Please try again later");
     }

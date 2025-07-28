@@ -24,6 +24,7 @@ import org.springframework.security.web.header.writers.XXssProtectionHeaderWrite
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.vimal.security.v2.utils.IsServerUpFilterUtility;
 import org.vimal.security.v2.utils.JWTFilterUtility;
 
 import java.util.HashMap;
@@ -55,6 +56,7 @@ public class SecurityConfig {
             API_VERSION + USER + "/resend/emailVerification/link"
     };
     private final JWTFilterUtility jwtFilterUtility;
+    private final IsServerUpFilterUtility isServerUpFilterUtility;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -72,6 +74,7 @@ public class SecurityConfig {
                         .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                         .contentTypeOptions(HeadersConfigurer.ContentTypeOptionsConfig::disable)
                 )
+                .addFilterBefore(isServerUpFilterUtility, JWTFilterUtility.class)
                 .addFilterBefore(jwtFilterUtility, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

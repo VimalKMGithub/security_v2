@@ -49,7 +49,10 @@ public class SecurityConfig {
             API_VERSION + AUTH + MFA + "/verify/email/OTP/toLogin",
             API_VERSION + AUTH + MFA + "/verify/TOTP/toLogin",
             API_VERSION + USER + "/register",
-            API_VERSION + USER + "/verifyEmail"
+            API_VERSION + USER + "/verifyEmail",
+            API_VERSION + USER + "/resend/emailVerification/link/username",
+            API_VERSION + USER + "/resend/emailVerification/link/email",
+            API_VERSION + USER + "/resend/emailVerification"
     };
     private final JWTFilterUtility jwtFilterUtility;
 

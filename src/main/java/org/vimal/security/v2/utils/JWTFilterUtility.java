@@ -13,10 +13,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
 public class JWTFilterUtility extends OncePerRequestFilter {
+    private static final String AUTHORIZATION_HEADER_PREFIX = "Bearer ";
     private final JWTUtility jwtUtility;
     private final ObjectMapper objectMapper;
 
@@ -26,7 +28,7 @@ public class JWTFilterUtility extends OncePerRequestFilter {
                                     FilterChain filterChain) throws IOException {
         try {
             var authorizationHeader = request.getHeader("Authorization");
-            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ") && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (Objects.nonNull(authorizationHeader) && authorizationHeader.startsWith(AUTHORIZATION_HEADER_PREFIX) && Objects.isNull(UserUtility.getAuthentication())) {
                 var userDetails = jwtUtility.verifyAccessToken(authorizationHeader.substring(7));
                 var authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

@@ -52,8 +52,8 @@ public class UserController {
         return ResponseEntity.ok(userService.resendEmailVerificationLink(usernameOrEmail));
     }
 
-//    @PostMapping("/forgot/password/username")
-//    public ResponseEntity<Map<String, String>> forgotPasswordUsername(@RequestParam String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-//        return ResponseEntity.ok(userService.forgotPasswordUsername(username));
-//    }
+    @PostMapping("/forgot/password/username")
+    public ResponseEntity<Map<String, String>> forgotPasswordUsername(@RequestParam String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(userService.forgotPasswordUsername(username));
+    }
 }

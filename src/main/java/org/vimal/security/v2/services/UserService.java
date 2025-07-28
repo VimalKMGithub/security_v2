@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.vimal.security.v2.converter.EmailOTPForPWDResetRandomConverter;
+import org.vimal.security.v2.converter.EmailOTPForPWDResetStaticConverter;
 import org.vimal.security.v2.converter.EmailVerificationTokenRandomConverter;
 import org.vimal.security.v2.converter.EmailVerificationTokenStaticConverter;
 import org.vimal.security.v2.dtos.GenericRegistrationDto;
@@ -31,6 +33,7 @@ import java.util.UUID;
 public class UserService {
     private static final String EMAIL_VERIFICATION_TOKEN_PREFIX = "SECURITY_V2_EMAIL_VERIFICATION_TOKEN:";
     private static final String EMAIL_VERIFICATION_TOKEN_MAPPING_PREFIX = "SECURITY_V2_EMAIL_VERIFICATION_TOKEN_MAPPING:";
+    private static final String FORGOT_PASSWORD_OTP_PREFIX = "SECURITY_V2_FORGOT_PASSWORD_OTP:";
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
@@ -38,6 +41,8 @@ public class UserService {
     private final Unleash unleash;
     private final EmailVerificationTokenStaticConverter emailVerificationTokenStaticConverter;
     private final EmailVerificationTokenRandomConverter emailVerificationTokenRandomConverter;
+    private final EmailOTPForPWDResetStaticConverter emailOTPForPWDResetStaticConverter;
+    private final EmailOTPForPWDResetRandomConverter emailOTPForPWDResetRandomConverter;
 
     public ResponseEntity<Map<String, Object>> register(GenericRegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.REGISTRATION_ENABLED.name())) {
@@ -177,5 +182,28 @@ public class UserService {
             else throw new BadRequestException("Invalid username/email");
         }
         throw new BadRequestException("Resending email verification link is currently disabled. Please try again later");
+    }
+
+    public Map<String, String> forgotPasswordUsername(String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        try {
+            ValidationUtility.validateUsername(username);
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid username");
+        }
+        var user = userRepo.findByUsername(username).orElseThrow(() -> new BadRequestException("Invalid username"));
+        if (!user.isEmailVerified())
+            throw new BadRequestException("Email is not verified. Please verify your email before resetting password");
+        mailService.sendOtpAsync(user.getEmail(), "OTP for resetting password using username", generateOTPForForgotPassword(user));
+        return Map.of("message", "OTP sent to your email. Please check your email to reset your password");
+    }
+
+    public String generateOTPForForgotPassword(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var otp = UUID.randomUUID().toString();
+        redisService.save(getEncryptedForgotPasswordOtpKey(user), emailOTPForPWDResetRandomConverter.encrypt(otp), RedisService.DEFAULT_TTL);
+        return otp;
+    }
+
+    public String getEncryptedForgotPasswordOtpKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return emailOTPForPWDResetStaticConverter.encrypt(FORGOT_PASSWORD_OTP_PREFIX + user.getId());
     }
 }

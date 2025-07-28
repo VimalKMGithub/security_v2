@@ -234,6 +234,27 @@ public class UserService {
         else throw new BadRequestException("Invalid username/email");
     }
 
-    public ResponseEntity<Map<String, Object>> resetPasswordUsername(GenericResetPwdDto dto) {
+    public ResponseEntity<Map<String, Object>> resetPasswordUsername(GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var invalidInputs = InputValidationUtility.validateInputs(dto, "username");
+        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        var user = userRepo.findByUsername(dto.username).orElseThrow(() -> new BadRequestException("Invalid username"));
+        verifyOTPForResetPassword(dto, user);
+        user.changePassword(passwordEncoder.encode(dto.password));
+        user.setUpdatedBy("SELF");
+        userRepo.save(user);
+        return ResponseEntity.ok(Map.of("message", "Password reset successful"));
+    }
+
+    public void verifyOTPForResetPassword(GenericResetPwdDto dto, UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var encryptedForgotPasswordOtpKey = getEncryptedForgotPasswordOtpKey(user);
+        var encryptedOtp = redisService.get(encryptedForgotPasswordOtpKey);
+        if (encryptedOtp != null) {
+            if (emailOTPForPWDResetRandomConverter.decrypt((String) encryptedOtp, String.class).equals(dto.otp)) {
+                redisService.delete(encryptedForgotPasswordOtpKey);
+                return;
+            }
+            throw new BadRequestException("Invalid OTP");
+        }
+        throw new BadRequestException("Invalid OTP");
     }
 }

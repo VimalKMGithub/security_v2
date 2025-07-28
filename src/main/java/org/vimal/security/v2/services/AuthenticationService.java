@@ -203,8 +203,12 @@ public class AuthenticationService {
 
     public String generateOTPForEmailMFA(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var otp = OTPUtility.generateOtp();
-        redisService.save(emailOTPStaticConverter.encrypt(EMAIL_MFA_OTP_PREFIX + user.getId()), emailOTPRandomConverter.encrypt(otp), RedisService.DEFAULT_TTL);
+        redisService.save(getEncryptedEmailMFAOTPKey(user), emailOTPRandomConverter.encrypt(otp), RedisService.DEFAULT_TTL);
         return otp;
+    }
+
+    public String getEncryptedEmailMFAOTPKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return emailOTPStaticConverter.encrypt(EMAIL_MFA_OTP_PREFIX + user.getId());
     }
 
     public Map<String, String> verifyEmailOTPToEnableEmailMFA(String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -230,11 +234,11 @@ public class AuthenticationService {
 
     public void verifyOTPToToggleEmailMfa(UserModel user,
                                           String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var encryptedEmailOTPToEnableEmailMFAKey = emailOTPStaticConverter.encrypt(EMAIL_MFA_OTP_PREFIX + user.getId());
-        var encryptedOTP = redisService.get(encryptedEmailOTPToEnableEmailMFAKey);
+        var encryptedEmailMFAOTPKey = getEncryptedEmailMFAOTPKey(user);
+        var encryptedOTP = redisService.get(encryptedEmailMFAOTPKey);
         if (encryptedOTP != null) {
             if (emailOTPRandomConverter.decrypt((String) encryptedOTP, String.class).equals(otp)) {
-                redisService.delete(encryptedEmailOTPToEnableEmailMFAKey);
+                redisService.delete(encryptedEmailMFAOTPKey);
                 return;
             }
             throw new BadRequestException("Invalid OTP");
@@ -301,7 +305,7 @@ public class AuthenticationService {
                                  String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (user.isAccountLocked() && user.getLastLockedAt().plus(1, ChronoUnit.DAYS).isAfter(Instant.now()))
             throw new LockedException("Account is locked due to too many failed mfa attempts. Please try again later");
-        var encryptedEmailMFAOTPKey = emailOTPStaticConverter.encrypt(EMAIL_MFA_OTP_PREFIX + user.getId());
+        var encryptedEmailMFAOTPKey = getEncryptedEmailMFAOTPKey(user);
         var encryptedOTP = redisService.get(encryptedEmailMFAOTPKey);
         if (encryptedOTP != null) {
             if (emailOTPRandomConverter.decrypt((String) encryptedOTP, String.class).equals(otp)) {

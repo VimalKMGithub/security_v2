@@ -157,7 +157,7 @@ public class AuthenticationService {
     }
 
     public Map<String, String> logout() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        var user = UserUtility.getCurrentAuthenticatedUser();
         jwtUtility.revokeAccessToken(user);
         jwtUtility.revokeRefreshToken(user);
         return Map.of("message", "Logout successful");
@@ -173,7 +173,7 @@ public class AuthenticationService {
     }
 
     public Map<String, String> revokeAccessToken() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        jwtUtility.revokeAccessToken(CurrentUserUtility.getCurrentAuthenticatedUser());
+        jwtUtility.revokeAccessToken(UserUtility.getCurrentAuthenticatedUser());
         return Map.of("message", "Access token revoked successfully");
     }
 
@@ -191,7 +191,7 @@ public class AuthenticationService {
         if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
         if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
             throw new BadRequestException("Email MFA is disabled globally");
-        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        var user = UserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) throw new BadRequestException("Email MFA is already enabled");
         mailService.sendOtpAsync(user.getEmail(), "OTP to enable email MFA", generateOTPForEmailMFA(user));
         return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
@@ -212,7 +212,7 @@ public class AuthenticationService {
         } catch (BadRequestException ex) {
             throw new BadRequestException("Invalid OTP");
         }
-        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        var user = UserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) throw new BadRequestException("Email MFA is already enabled");
         verifyOTPToToggleEmailMfa(user, otp);
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
@@ -320,7 +320,7 @@ public class AuthenticationService {
         if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
         if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
             throw new BadRequestException("Email MFA is disabled globally");
-        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        var user = UserUtility.getCurrentAuthenticatedUser();
         if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL))
             throw new BadRequestException("Email MFA is already disabled");
         mailService.sendOtpAsync(user.getEmail(), "OTP to disable email MFA", generateOTPForEmailMFA(user));
@@ -338,7 +338,7 @@ public class AuthenticationService {
         } catch (BadRequestException ex) {
             throw new BadRequestException("Invalid OTP or password");
         }
-        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        var user = UserUtility.getCurrentAuthenticatedUser();
         if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL))
             throw new BadRequestException("Email MFA is already disabled");
         verifyOTPToToggleEmailMfa(user, otp);
@@ -356,7 +356,7 @@ public class AuthenticationService {
         if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
         if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
             throw new BadRequestException("Authenticator app MFA is disabled globally");
-        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        var user = UserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
             throw new BadRequestException("Authenticator app MFA is already enabled");
         return QRUtility.generateQRCode(TOTPUtility.generateTOTPUrl("God Level Security", user.getUsername(), generateAuthenticatorAppSecret(user)));
@@ -377,7 +377,7 @@ public class AuthenticationService {
         } catch (BadRequestException ex) {
             throw new BadRequestException("Invalid TOTP");
         }
-        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        var user = UserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
             throw new BadRequestException("Authenticator app MFA is already enabled");
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
@@ -448,7 +448,7 @@ public class AuthenticationService {
         } catch (BadRequestException ex) {
             throw new BadRequestException("Invalid TOTP or password");
         }
-        var user = CurrentUserUtility.getCurrentAuthenticatedUser();
+        var user = UserUtility.getCurrentAuthenticatedUser();
         if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
             throw new BadRequestException("Authenticator app MFA is already disabled");
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));

@@ -1,13 +1,13 @@
 package org.vimal.security.v2.utils;
 
-import org.vimal.security.v2.dtos.RegistrationDto;
+import org.vimal.security.v2.dtos.GenericRegistrationDto;
 import org.vimal.security.v2.exceptions.BadRequestException;
 
 import java.util.Collection;
 import java.util.HashSet;
 
 public class InputValidationUtility {
-    public static Collection<String> validateInputs(RegistrationDto dto) {
+    public static Collection<String> validateInputs(GenericRegistrationDto dto) {
         var validationErrors = new HashSet<String>();
         try {
             ValidationUtility.validateUsername(dto.username);

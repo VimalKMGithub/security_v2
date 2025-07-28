@@ -8,9 +8,10 @@ import org.vimal.security.v2.enums.SystemRoles;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
 
+import java.util.Collection;
 import java.util.Comparator;
 
-public class CurrentUserUtility {
+public class UserUtility {
     public static Authentication getAuthenticationOfCurrentAuthenticatedUser() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof UserDetailsImpl))
@@ -18,16 +19,31 @@ public class CurrentUserUtility {
         return authentication;
     }
 
+    public static UserDetailsImpl getCurrentAuthenticatedUserDetails() {
+        return (UserDetailsImpl) getAuthenticationOfCurrentAuthenticatedUser().getPrincipal();
+    }
+
     public static UserModel getCurrentAuthenticatedUser() {
-        var userDetails = (UserDetailsImpl) getAuthenticationOfCurrentAuthenticatedUser().getPrincipal();
-        return userDetails.getUserModel();
+        return getCurrentAuthenticatedUserDetails().getUserModel();
     }
 
     public static String getCurrentAuthenticatedUserHighestTopRole() {
-        return getAuthenticationOfCurrentAuthenticatedUser().getAuthorities().stream()
+        return getUserHighestTopRole(getAuthenticationOfCurrentAuthenticatedUser().getAuthorities());
+    }
+
+    public static String getUserHighestTopRole(Collection<? extends GrantedAuthority> authorities) {
+        return authorities.stream()
                 .map(GrantedAuthority::getAuthority)
                 .filter(SystemRoles.TOP_ROLES::contains)
                 .min(Comparator.comparingInt(SystemRoles.TOP_ROLES::indexOf))
                 .orElse(null);
+    }
+
+    public static String getUserHighestTopRole(UserDetailsImpl userDetails) {
+        return getUserHighestTopRole(userDetails.getAuthorities());
+    }
+
+    public static String getUserHighestTopRole(Authentication authentication) {
+        return getUserHighestTopRole(authentication.getAuthorities());
     }
 }

@@ -33,7 +33,7 @@ public class UserDetailsImpl implements UserDetails {
         return authorities;
     }
 
-    private Collection<GrantedAuthority> computeAuthorities(UserModel user) {
+    public Collection<? extends GrantedAuthority> computeAuthorities(UserModel user) {
         return user.getRoles().stream()
                 .flatMap(role -> Stream.concat(
                         Stream.of(new SimpleGrantedAuthority(role.getRoleName())),

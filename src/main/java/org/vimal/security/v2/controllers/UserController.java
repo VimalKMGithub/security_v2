@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.vimal.security.v2.dtos.RegistrationDto;
+import org.vimal.security.v2.dtos.GenericRegistrationDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.services.UserService;
 
@@ -23,12 +23,17 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> register(@RequestBody GenericRegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.register(dto);
     }
 
     @GetMapping("/getSelfDetails")
     public ResponseEntity<UserSummaryDto> getSelfDetails() {
         return ResponseEntity.ok(userService.getSelfDetails());
+    }
+
+    @PostMapping("/verifyEmail")
+    public ResponseEntity<Map<String, Object>> verifyEmail(@RequestParam String emailVerificationToken) {
+        return ResponseEntity.ok(userService.verifyEmail(emailVerificationToken));
     }
 }

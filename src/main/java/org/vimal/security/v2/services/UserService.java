@@ -8,16 +8,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.vimal.security.v2.converter.EmailVerificationTokenRandomConverter;
 import org.vimal.security.v2.converter.EmailVerificationTokenStaticConverter;
-import org.vimal.security.v2.dtos.RegistrationDto;
+import org.vimal.security.v2.dtos.GenericRegistrationDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.UserRepo;
-import org.vimal.security.v2.utils.CurrentUserUtility;
-import org.vimal.security.v2.utils.InputValidationUtility;
-import org.vimal.security.v2.utils.MapperUtility;
-import org.vimal.security.v2.utils.SanitizerUtility;
+import org.vimal.security.v2.utils.*;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -41,7 +38,7 @@ public class UserService {
     private final EmailVerificationTokenStaticConverter emailVerificationTokenStaticConverter;
     private final EmailVerificationTokenRandomConverter emailVerificationTokenRandomConverter;
 
-    public ResponseEntity<Map<String, Object>> register(RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> register(GenericRegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.REGISTRATION_ENABLED.name())) {
             var invalidInputs = InputValidationUtility.validateInputs(dto);
             if (!invalidInputs.isEmpty())
@@ -65,7 +62,7 @@ public class UserService {
         throw new BadRequestException("Registration is currently disabled. Please try again later");
     }
 
-    public UserModel toUserModel(RegistrationDto dto, String sanitizedEmail) {
+    public UserModel toUserModel(GenericRegistrationDto dto, String sanitizedEmail) {
         return UserModel.builder()
                 .username(dto.username)
                 .password(passwordEncoder.encode(dto.password))
@@ -98,7 +95,15 @@ public class UserService {
     }
 
     public UserSummaryDto getSelfDetails() {
-        var user = userRepo.findById(CurrentUserUtility.getCurrentAuthenticatedUser().getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+        var user = userRepo.findById(UserUtility.getCurrentAuthenticatedUser().getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
         return MapperUtility.toUserSummaryDto(user);
+    }
+
+    public Map<String, Object> verifyEmail(String emailVerificationToken) {
+        try {
+            ValidationUtility.validateUuid(emailVerificationToken, "Email verification token");
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid email verification token");
+        }
     }
 }

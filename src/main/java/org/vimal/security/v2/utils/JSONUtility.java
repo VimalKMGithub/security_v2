@@ -7,10 +7,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 public class JSONUtility {
     private static final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
-    private JSONUtility() {
-        throw new AssertionError("Cannot instantiate JSONUtility class");
-    }
-
     public static String toJson(Object obj) throws JsonProcessingException {
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(obj);
     }

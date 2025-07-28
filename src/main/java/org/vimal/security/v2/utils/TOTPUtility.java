@@ -22,13 +22,7 @@ public class TOTPUtility {
     }
 
     public static String generateTOTPUrl(String issuer, String accountName, String base32Secret) {
-        return String.format(
-                "otpauth://totp/%s:%s?secret=%s&issuer=%s&algorithm=SHA1&digits=6&period=30",
-                urlEncode(issuer),
-                urlEncode(accountName),
-                base32Secret,
-                urlEncode(issuer)
-        );
+        return String.format("otpauth://totp/%s:%s?secret=%s&issuer=%s&algorithm=SHA1&digits=6&period=30", urlEncode(issuer), urlEncode(accountName), base32Secret, urlEncode(issuer));
     }
 
     public static String urlEncode(String value) {

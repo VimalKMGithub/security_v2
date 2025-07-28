@@ -52,7 +52,7 @@ public class SecurityConfig {
             API_VERSION + USER + "/verifyEmail",
             API_VERSION + USER + "/resend/emailVerification/link/username",
             API_VERSION + USER + "/resend/emailVerification/link/email",
-            API_VERSION + USER + "/resend/emailVerification"
+            API_VERSION + USER + "/resend/emailVerification/link"
     };
     private final JWTFilterUtility jwtFilterUtility;
 

@@ -51,21 +51,21 @@ public class InputValidationUtility {
                 try {
                     ValidationUtility.validateUsername(dto.username);
                 } catch (BadRequestException ex) {
-                    validationErrors.add(ex.getMessage());
+                    validationErrors.add("Invalid username");
                 }
             }
             case "email" -> {
                 try {
                     ValidationUtility.validateEmail(dto.email);
                 } catch (BadRequestException ex) {
-                    validationErrors.add(ex.getMessage());
+                    validationErrors.add("Invalid email");
                 }
             }
             case "usernameOrEmail" -> {
                 try {
                     ValidationUtility.validateStringNonNullAndNotEmpty(dto.usernameOrEmail, "Username/email");
                 } catch (BadRequestException ex) {
-                    validationErrors.add(ex.getMessage());
+                    validationErrors.add("Invalid username/email");
                 }
             }
         }

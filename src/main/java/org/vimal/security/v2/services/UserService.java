@@ -268,4 +268,16 @@ public class UserService {
         userRepo.save(user);
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
+
+    public ResponseEntity<Map<String, Object>> resetPassword(GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var invalidInputs = InputValidationUtility.validateInputs(dto, "usernameOrEmail");
+        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        if (ValidationUtility.USERNAME_PATTERN.matcher(dto.usernameOrEmail).matches()) {
+            dto.setUsername(dto.usernameOrEmail);
+            return resetPasswordUsername(dto);
+        } else if (ValidationUtility.EMAIL_PATTERN.matcher(dto.usernameOrEmail).matches()) {
+            dto.setEmail(dto.usernameOrEmail);
+            return resetPasswordEmail(dto);
+        } else throw new BadRequestException("Invalid username/email");
+    }
 }

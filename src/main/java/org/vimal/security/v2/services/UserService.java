@@ -23,6 +23,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -103,11 +104,32 @@ public class UserService {
         return MapperUtility.toUserSummaryDto(user);
     }
 
-    public Map<String, Object> verifyEmail(String emailVerificationToken) {
+    public Map<String, Object> verifyEmail(String emailVerificationToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         try {
             ValidationUtility.validateUuid(emailVerificationToken, "Email verification token");
         } catch (BadRequestException ex) {
             throw new BadRequestException("Invalid email verification token");
         }
+        var encryptedEmailVerificationTokenMappingKey = getEncryptedEmailVerificationTokenMappingKey(emailVerificationToken);
+        var user = userRepo.findById(getUserIdFromEncryptedEmailVerificationTokenMappingKey(encryptedEmailVerificationTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid email verification token"));
+        if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
+        user.setEmailVerified(true);
+        user.setUpdatedBy("SELF");
+        try {
+            redisService.delete(Set.of(getEncryptedEmailVerificationTokenKey(user), encryptedEmailVerificationTokenMappingKey));
+        } catch (Exception ignored) {
+        }
+        return Map.of("message", "Email verification successful", "user", MapperUtility.toUserSummaryDto(userRepo.save(user)));
+    }
+
+    public String getEncryptedEmailVerificationTokenMappingKey(String emailVerificationToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return emailVerificationTokenStaticConverter.encrypt(EMAIL_VERIFICATION_TOKEN_MAPPING_PREFIX + emailVerificationToken);
+    }
+
+    public UUID getUserIdFromEncryptedEmailVerificationTokenMappingKey(String encryptedEmailVerificationTokenMappingKey) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var encryptedUserId = redisService.get(encryptedEmailVerificationTokenMappingKey);
+        if (encryptedUserId != null)
+            return emailVerificationTokenRandomConverter.decrypt((String) encryptedUserId, UUID.class);
+        throw new BadRequestException("Invalid email verification token");
     }
 }

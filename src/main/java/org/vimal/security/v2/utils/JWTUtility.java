@@ -84,13 +84,25 @@ public class JWTUtility {
         return jwtId;
     }
 
+    public enum AccessTokenClaims {
+        JWT_ID,
+        USER_ID,
+        USERNAME,
+        EMAIL,
+        AUTHORITIES,
+        MFA_ENABLED,
+        MFA_METHODS,
+        ISSUED_AT,
+        EXPIRATION
+    }
+
     public Map<String, Object> buildTokenClaims(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var claims = new HashMap<String, Object>();
-        claims.put("JWT_ID", generateJWTId(user));
-        claims.put("USER_ID", user.getId());
-        claims.put("USERNAME", user.getUsername());
-        claims.put("EMAIL", user.getEmail());
-        claims.put("AUTHORITIES", user.getRoles().stream()
+        claims.put(AccessTokenClaims.JWT_ID.name(), generateJWTId(user));
+        claims.put(AccessTokenClaims.USER_ID.name(), user.getId());
+        claims.put(AccessTokenClaims.USERNAME.name(), user.getUsername());
+        claims.put(AccessTokenClaims.EMAIL.name(), user.getEmail());
+        claims.put(AccessTokenClaims.AUTHORITIES.name(), user.getRoles().stream()
                 .flatMap(role ->
                         Stream.concat(
                                 Stream.of(role.getRoleName()),
@@ -98,12 +110,12 @@ public class JWTUtility {
                         )
                 )
                 .collect(Collectors.toSet()));
-        claims.put("MFA_ENABLED", user.isMfaEnabled());
-        claims.put("MFA_METHODS", user.getEnabledMfaMethods().stream()
+        claims.put(AccessTokenClaims.MFA_ENABLED.name(), user.isMfaEnabled());
+        claims.put(AccessTokenClaims.MFA_METHODS.name(), user.getEnabledMfaMethods().stream()
                 .map(UserModel.MfaType::name)
                 .collect(Collectors.toSet()));
-        claims.put("ISSUED_AT", Instant.now().toString());
-        claims.put("EXPIRATION", Instant.now().plusSeconds(ACCESS_TOKEN_EXPIRES_IN_SECONDS).toString());
+        claims.put(AccessTokenClaims.ISSUED_AT.name(), Instant.now().toString());
+        claims.put(AccessTokenClaims.EXPIRATION.name(), Instant.now().plusSeconds(ACCESS_TOKEN_EXPIRES_IN_SECONDS).toString());
         return claims;
     }
 
@@ -182,22 +194,22 @@ public class JWTUtility {
     @SuppressWarnings("unchecked")
     public UserDetailsImpl verifyAccessToken(String accessToken) throws JoseException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var claims = parseToken(decryptToken(accessToken));
-        if (Instant.parse(claims.get("ISSUED_AT", String.class)).isAfter(Instant.now()))
+        if (Instant.parse(claims.get(AccessTokenClaims.ISSUED_AT.name(), String.class)).isAfter(Instant.now()))
             throw new BadRequestException("Invalid token");
-        if (Instant.parse(claims.get("EXPIRATION", String.class)).isBefore(Instant.now()))
+        if (Instant.parse(claims.get(AccessTokenClaims.EXPIRATION.name(), String.class)).isBefore(Instant.now()))
             throw new BadRequestException("Invalid token");
-        var userId = claims.get("USER_ID", String.class);
+        var userId = claims.get(AccessTokenClaims.USER_ID.name(), String.class);
         var encryptedJWTId = redisService.get(jwtStaticConverter.encrypt(JWT_ID_PREFIX + userId));
         if (encryptedJWTId == null) throw new BadRequestException("Invalid token");
-        if (!jwtRandomConverter.decrypt((String) encryptedJWTId, String.class).equals(claims.get("JWT_ID", String.class)))
+        if (!jwtRandomConverter.decrypt((String) encryptedJWTId, String.class).equals(claims.get(AccessTokenClaims.JWT_ID.name(), String.class)))
             throw new BadRequestException("Invalid token");
         var tokenUser = new UserModel();
         tokenUser.setId(UUID.fromString(userId));
-        tokenUser.setUsername(claims.get("USERNAME", String.class));
-        tokenUser.setEmail(claims.get("EMAIL", String.class));
-        tokenUser.setMfaEnabled(claims.get("MFA_ENABLED", Boolean.class));
-        tokenUser.setEnabledMfaMethods(((List<String>) claims.get("MFA_METHODS", List.class)).stream().map(UserModel.MfaType::valueOf).collect(Collectors.toSet()));
-        return new UserDetailsImpl(tokenUser, ((List<String>) claims.get("AUTHORITIES", List.class)).stream().map(SimpleGrantedAuthority::new).collect(Collectors.toSet()));
+        tokenUser.setUsername(claims.get(AccessTokenClaims.USERNAME.name(), String.class));
+        tokenUser.setEmail(claims.get(AccessTokenClaims.EMAIL.name(), String.class));
+        tokenUser.setMfaEnabled(claims.get(AccessTokenClaims.MFA_ENABLED.name(), Boolean.class));
+        tokenUser.setEnabledMfaMethods(((List<String>) claims.get(AccessTokenClaims.MFA_METHODS.name(), List.class)).stream().map(UserModel.MfaType::valueOf).collect(Collectors.toSet()));
+        return new UserDetailsImpl(tokenUser, ((List<String>) claims.get(AccessTokenClaims.AUTHORITIES.name(), List.class)).stream().map(SimpleGrantedAuthority::new).collect(Collectors.toSet()));
     }
 
     public String getEncryptedJWTIdKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

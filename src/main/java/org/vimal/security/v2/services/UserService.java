@@ -51,14 +51,14 @@ public class UserService {
             var sanitizedEmail = SanitizerUtility.sanitizeEmail(dto.email);
             if (userRepo.existsByRealEmail(sanitizedEmail))
                 throw new BadRequestException("Alias version of email: '" + dto.email + "' is already registered");
-            var user = toUserModel(dto, sanitizedEmail);
+            var user = userRepo.save(toUserModel(dto, sanitizedEmail));
             var shouldVerifyRegisteredEmail = unleash.isEnabled(FeatureFlags.REGISTRATION_EMAIL_VERIFICATION.name());
             user.setEmailVerified(!shouldVerifyRegisteredEmail);
             if (shouldVerifyRegisteredEmail) {
                 mailService.sendLinkEmailAsync(user.getEmail(), "Email verification after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
-                return ResponseEntity.ok(Map.of("message", "Registration successful. Please check your email for verification link", "user", userRepo.save(user)));
+                return ResponseEntity.ok(Map.of("message", "Registration successful. Please check your email for verification link", "user", user));
             }
-            return ResponseEntity.ok(Map.of("message", "Registration successful", "user", userRepo.save(user)));
+            return ResponseEntity.ok(Map.of("message", "Registration successful", "user", user));
         }
         throw new BadRequestException("Registration is currently disabled. Please try again later");
     }
@@ -111,6 +111,8 @@ public class UserService {
             throw new BadRequestException("Invalid email verification token");
         }
         var encryptedEmailVerificationTokenMappingKey = getEncryptedEmailVerificationTokenMappingKey(emailVerificationToken);
+        System.out.println(encryptedEmailVerificationTokenMappingKey);
+        System.out.println(getUserIdFromEncryptedEmailVerificationTokenMappingKey(encryptedEmailVerificationTokenMappingKey));
         var user = userRepo.findById(getUserIdFromEncryptedEmailVerificationTokenMappingKey(encryptedEmailVerificationTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid email verification token"));
         if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
         user.setEmailVerified(true);

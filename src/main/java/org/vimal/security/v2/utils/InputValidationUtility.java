@@ -1,14 +1,14 @@
 package org.vimal.security.v2.utils;
 
-import org.vimal.security.v2.dtos.GenericRegistrationDto;
-import org.vimal.security.v2.dtos.GenericResetPwdDto;
+import org.vimal.security.v2.dtos.RegistrationDto;
+import org.vimal.security.v2.dtos.ResetPwdDto;
 import org.vimal.security.v2.exceptions.BadRequestException;
 
 import java.util.Collection;
 import java.util.HashSet;
 
 public class InputValidationUtility {
-    public static Collection<String> validateInputs(GenericRegistrationDto dto) {
+    public static Collection<String> validateInputs(RegistrationDto dto) {
         var validationErrors = new HashSet<String>();
         try {
             ValidationUtility.validateUsername(dto.username);
@@ -43,34 +43,34 @@ public class InputValidationUtility {
         return validationErrors;
     }
 
-    public static Collection<String> validateInputs(GenericResetPwdDto dto,
+    public static Collection<String> validateInputs(ResetPwdDto dto,
                                                     String type) {
         var validationErrors = new HashSet<String>();
         switch (type) {
             case "username" -> {
                 try {
-                    ValidationUtility.validateUsername(dto.username);
+                    ValidationUtility.validateUsername(dto.getUsername());
                 } catch (BadRequestException ex) {
                     validationErrors.add("Invalid username");
                 }
             }
             case "email" -> {
                 try {
-                    ValidationUtility.validateEmail(dto.email);
+                    ValidationUtility.validateEmail(dto.getEmail());
                 } catch (BadRequestException ex) {
                     validationErrors.add("Invalid email");
                 }
             }
             case "usernameOrEmail" -> {
                 try {
-                    ValidationUtility.validateStringNonNullAndNotEmpty(dto.usernameOrEmail, "Username/email");
+                    ValidationUtility.validateStringNonNullAndNotEmpty(dto.getUsernameOrEmail(), "Username/email");
                 } catch (BadRequestException ex) {
                     validationErrors.add("Invalid username/email");
                 }
             }
         }
         try {
-            ValidationUtility.validateOTP(dto.otp, "OTP");
+            ValidationUtility.validateOTP(dto.getOtp(), "OTP");
         } catch (BadRequestException ex) {
             validationErrors.add("Invalid OTP");
         }

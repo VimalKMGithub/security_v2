@@ -10,8 +10,8 @@ import org.vimal.security.v2.converter.EmailOTPForPWDResetRandomConverter;
 import org.vimal.security.v2.converter.EmailOTPForPWDResetStaticConverter;
 import org.vimal.security.v2.converter.EmailVerificationTokenRandomConverter;
 import org.vimal.security.v2.converter.EmailVerificationTokenStaticConverter;
-import org.vimal.security.v2.dtos.GenericRegistrationDto;
-import org.vimal.security.v2.dtos.GenericResetPwdDto;
+import org.vimal.security.v2.dtos.RegistrationDto;
+import org.vimal.security.v2.dtos.ResetPwdDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
@@ -45,7 +45,7 @@ public class UserService {
     private final EmailOTPForPWDResetStaticConverter emailOTPForPWDResetStaticConverter;
     private final EmailOTPForPWDResetRandomConverter emailOTPForPWDResetRandomConverter;
 
-    public ResponseEntity<Map<String, Object>> register(GenericRegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> register(RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.REGISTRATION_ENABLED.name())) {
             var invalidInputs = InputValidationUtility.validateInputs(dto);
             if (!invalidInputs.isEmpty())
@@ -69,7 +69,7 @@ public class UserService {
         throw new BadRequestException("Registration is currently disabled. Please try again later");
     }
 
-    public UserModel toUserModel(GenericRegistrationDto dto, String sanitizedEmail) {
+    public UserModel toUserModel(RegistrationDto dto, String sanitizedEmail) {
         return UserModel.builder()
                 .username(dto.username)
                 .password(passwordEncoder.encode(dto.password))
@@ -234,10 +234,10 @@ public class UserService {
         else throw new BadRequestException("Invalid username/email");
     }
 
-    public ResponseEntity<Map<String, Object>> resetPasswordUsername(GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> resetPasswordUsername(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var invalidInputs = InputValidationUtility.validateInputs(dto, "username");
         if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
-        var user = userRepo.findByUsername(dto.username).orElseThrow(() -> new BadRequestException("Invalid username"));
+        var user = userRepo.findByUsername(dto.getUsername()).orElseThrow(() -> new BadRequestException("Invalid username"));
         verifyOTPForResetPassword(dto, user);
         user.changePassword(passwordEncoder.encode(dto.password));
         user.setUpdatedBy("SELF");
@@ -245,11 +245,11 @@ public class UserService {
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
 
-    public void verifyOTPForResetPassword(GenericResetPwdDto dto, UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public void verifyOTPForResetPassword(ResetPwdDto dto, UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedForgotPasswordOtpKey = getEncryptedForgotPasswordOtpKey(user);
         var encryptedOtp = redisService.get(encryptedForgotPasswordOtpKey);
         if (encryptedOtp != null) {
-            if (emailOTPForPWDResetRandomConverter.decrypt((String) encryptedOtp, String.class).equals(dto.otp)) {
+            if (emailOTPForPWDResetRandomConverter.decrypt((String) encryptedOtp, String.class).equals(dto.getOtp())) {
                 redisService.delete(encryptedForgotPasswordOtpKey);
                 return;
             }
@@ -258,10 +258,10 @@ public class UserService {
         throw new BadRequestException("Invalid OTP");
     }
 
-    public ResponseEntity<Map<String, Object>> resetPasswordEmail(GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> resetPasswordEmail(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var invalidInputs = InputValidationUtility.validateInputs(dto, "email");
         if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
-        var user = userRepo.findByEmail(dto.email).orElseThrow(() -> new BadRequestException("Invalid email"));
+        var user = userRepo.findByEmail(dto.getEmail()).orElseThrow(() -> new BadRequestException("Invalid email"));
         verifyOTPForResetPassword(dto, user);
         user.changePassword(passwordEncoder.encode(dto.password));
         user.setUpdatedBy("SELF");
@@ -269,14 +269,14 @@ public class UserService {
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
 
-    public ResponseEntity<Map<String, Object>> resetPassword(GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> resetPassword(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var invalidInputs = InputValidationUtility.validateInputs(dto, "usernameOrEmail");
         if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
-        if (ValidationUtility.USERNAME_PATTERN.matcher(dto.usernameOrEmail).matches()) {
-            dto.setUsername(dto.usernameOrEmail);
+        if (ValidationUtility.USERNAME_PATTERN.matcher(dto.getUsernameOrEmail()).matches()) {
+            dto.setUsername(dto.getUsernameOrEmail());
             return resetPasswordUsername(dto);
-        } else if (ValidationUtility.EMAIL_PATTERN.matcher(dto.usernameOrEmail).matches()) {
-            dto.setEmail(dto.usernameOrEmail);
+        } else if (ValidationUtility.EMAIL_PATTERN.matcher(dto.getUsernameOrEmail()).matches()) {
+            dto.setEmail(dto.getUsernameOrEmail());
             return resetPasswordEmail(dto);
         } else throw new BadRequestException("Invalid username/email");
     }

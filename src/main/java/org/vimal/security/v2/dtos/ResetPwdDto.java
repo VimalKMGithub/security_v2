@@ -5,11 +5,11 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class GenericResetPwdDto {
-    public String username;
-    public String email;
-    public String usernameOrEmail;
-    public String otp;
+public class ResetPwdDto {
+    private String username;
+    private String email;
+    private String usernameOrEmail;
+    private String otp;
     public String password;
     public String confirmPassword;
 }

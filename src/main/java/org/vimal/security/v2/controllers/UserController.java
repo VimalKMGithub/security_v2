@@ -4,8 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.vimal.security.v2.dtos.GenericRegistrationDto;
-import org.vimal.security.v2.dtos.GenericResetPwdDto;
+import org.vimal.security.v2.dtos.RegistrationDto;
+import org.vimal.security.v2.dtos.ResetPwdDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.services.UserService;
 
@@ -24,7 +24,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody GenericRegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> register(@RequestBody RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.register(dto);
     }
 
@@ -69,17 +69,17 @@ public class UserController {
     }
 
     @PostMapping("/reset/password/username")
-    public ResponseEntity<Map<String, Object>> resetPasswordUsername(@RequestBody GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> resetPasswordUsername(@RequestBody ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.resetPasswordUsername(dto);
     }
 
     @PostMapping("/reset/password/email")
-    public ResponseEntity<Map<String, Object>> resetPasswordEmail(@RequestBody GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> resetPasswordEmail(@RequestBody ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.resetPasswordEmail(dto);
     }
 
     @PostMapping("/reset/password")
-    public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.resetPassword(dto);
     }
 }

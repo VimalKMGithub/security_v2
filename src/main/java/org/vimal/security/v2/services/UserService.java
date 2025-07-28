@@ -55,7 +55,7 @@ public class UserService {
             var shouldVerifyRegisteredEmail = unleash.isEnabled(FeatureFlags.REGISTRATION_EMAIL_VERIFICATION.name());
             user.setEmailVerified(!shouldVerifyRegisteredEmail);
             if (shouldVerifyRegisteredEmail) {
-                mailService.sendLinkEmailAsync(user.getEmail(), "Email verification after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
+                mailService.sendLinkEmailAsync(user.getEmail(), "Email verification link after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
                 return ResponseEntity.ok(Map.of("message", "Registration successful. Please check your email for verification link", "user", user));
             }
             return ResponseEntity.ok(Map.of("message", "Registration successful", "user", user));
@@ -133,9 +133,48 @@ public class UserService {
         throw new BadRequestException("Invalid email verification token");
     }
 
-    public Map<String, String> resendEmailVerificationLinkUsername(String username) {
+    public Map<String, String> resendEmailVerificationLinkUsername(String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.RESEND_REGISTRATION_EMAIL_VERIFICATION.name())) {
-            return Map.of("message", "enabled");
+            try {
+                ValidationUtility.validateUsername(username);
+            } catch (BadRequestException ex) {
+                throw new BadRequestException("Invalid username");
+            }
+            var user = userRepo.findByUsername(username).orElseThrow(() -> new BadRequestException("Invalid username"));
+            if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
+            mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration using username", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
+            return Map.of("message", "Email verification link resent successfully. Please check your email");
+        }
+        throw new BadRequestException("Resending email verification link is currently disabled. Please try again later");
+    }
+
+    public Map<String, String> resendEmailVerificationLinkEmail(String email) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (unleash.isEnabled(FeatureFlags.RESEND_REGISTRATION_EMAIL_VERIFICATION.name())) {
+            try {
+                ValidationUtility.validateEmail(email);
+            } catch (BadRequestException ex) {
+                throw new BadRequestException("Invalid email");
+            }
+            var user = userRepo.findByEmail(email).orElseThrow(() -> new BadRequestException("Invalid email"));
+            if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
+            mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration using email", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
+            return Map.of("message", "Email verification link resent successfully. Please check your email");
+        }
+        throw new BadRequestException("Resending email verification link is currently disabled. Please try again later");
+    }
+
+    public Map<String, String> resendEmailVerificationLink(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (unleash.isEnabled(FeatureFlags.RESEND_REGISTRATION_EMAIL_VERIFICATION.name())) {
+            try {
+                ValidationUtility.validateStringNonNullAndNotEmpty(usernameOrEmail, "Username/email");
+            } catch (BadRequestException ex) {
+                throw new BadRequestException("Invalid username/email");
+            }
+            if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
+                return resendEmailVerificationLinkUsername(usernameOrEmail);
+            else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
+                return resendEmailVerificationLinkEmail(usernameOrEmail);
+            else throw new BadRequestException("Invalid username/email");
         }
         throw new BadRequestException("Resending email verification link is currently disabled. Please try again later");
     }

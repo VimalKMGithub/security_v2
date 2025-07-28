@@ -66,4 +66,6 @@ public class UserController {
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestParam String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(userService.forgotPassword(usernameOrEmail));
     }
+
+    @PostMapping("/reset/password/username")
 }

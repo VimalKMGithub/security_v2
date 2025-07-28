@@ -219,4 +219,17 @@ public class UserService {
         mailService.sendOtpAsync(user.getEmail(), "OTP for resetting password using email", generateOTPForForgotPassword(user));
         return Map.of("message", "OTP sent to your email. Please check your email to reset your password");
     }
+
+    public Map<String, String> forgotPassword(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        try {
+            ValidationUtility.validateStringNonNullAndNotEmpty(usernameOrEmail, "Username/email");
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid username/email");
+        }
+        if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
+            return forgotPasswordUsername(usernameOrEmail);
+        else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
+            return forgotPasswordEmail(usernameOrEmail);
+        else throw new BadRequestException("Invalid username/email");
+    }
 }

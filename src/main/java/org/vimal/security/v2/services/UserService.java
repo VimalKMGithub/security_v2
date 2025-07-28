@@ -111,8 +111,6 @@ public class UserService {
             throw new BadRequestException("Invalid email verification token");
         }
         var encryptedEmailVerificationTokenMappingKey = getEncryptedEmailVerificationTokenMappingKey(emailVerificationToken);
-        System.out.println(encryptedEmailVerificationTokenMappingKey);
-        System.out.println(getUserIdFromEncryptedEmailVerificationTokenMappingKey(encryptedEmailVerificationTokenMappingKey));
         var user = userRepo.findById(getUserIdFromEncryptedEmailVerificationTokenMappingKey(encryptedEmailVerificationTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid email verification token"));
         if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
         user.setEmailVerified(true);

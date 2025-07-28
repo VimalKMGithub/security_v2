@@ -372,8 +372,12 @@ public class AuthenticationService {
 
     public String generateAuthenticatorAppSecret(UserModel user) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var secret = TOTPUtility.generateBase32Secret();
-        redisService.save(authenticatorAppMFASecretStaticConverter.encrypt(AUTHENTICATOR_APP_SECRET_PREFIX + user.getId()), authenticatorAppMFASecretRandomConverter.encrypt(secret), RedisService.DEFAULT_TTL);
+        redisService.save(getEncryptedSecretKey(user), authenticatorAppMFASecretRandomConverter.encrypt(secret), RedisService.DEFAULT_TTL);
         return secret;
+    }
+
+    public String getEncryptedSecretKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return authenticatorAppMFASecretStaticConverter.encrypt(AUTHENTICATOR_APP_SECRET_PREFIX + user.getId());
     }
 
     public Map<String, String> verifyTOTPToSetupAuthenticatorApp(String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -398,7 +402,7 @@ public class AuthenticationService {
 
     public void verifyTOTP(UserModel user,
                            String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var encryptedSecretKey = authenticatorAppMFASecretStaticConverter.encrypt(AUTHENTICATOR_APP_SECRET_PREFIX + user.getId());
+        var encryptedSecretKey = getEncryptedSecretKey(user);
         var encryptedSecret = redisService.get(encryptedSecretKey);
         if (encryptedSecret != null) {
             var secret = authenticatorAppMFASecretRandomConverter.decrypt((String) encryptedSecret, String.class);

@@ -77,7 +77,7 @@ public class UserService {
     }
 
     public UUID generateEmailVerificationToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var encryptedEmailVerificationTokenKey = emailVerificationTokenStaticConverter.encrypt(EMAIL_VERIFICATION_TOKEN_PREFIX + user.getId());
+        var encryptedEmailVerificationTokenKey = getEncryptedEmailVerificationTokenKey(user);
         var existingEncryptedEmailVerificationToken = redisService.get(encryptedEmailVerificationTokenKey);
         if (existingEncryptedEmailVerificationToken != null)
             return emailVerificationTokenRandomConverter.decrypt((String) existingEncryptedEmailVerificationToken, UUID.class);
@@ -92,6 +92,10 @@ public class UserService {
             redisService.delete(encryptedEmailVerificationTokenMappingKey);
             throw new RuntimeException("Failed to generate email verification token", ex);
         }
+    }
+
+    public String getEncryptedEmailVerificationTokenKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return emailVerificationTokenStaticConverter.encrypt(EMAIL_VERIFICATION_TOKEN_PREFIX + user.getId());
     }
 
     public UserSummaryDto getSelfDetails() {

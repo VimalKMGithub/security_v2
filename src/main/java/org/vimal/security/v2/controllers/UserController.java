@@ -36,4 +36,9 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> verifyEmail(@RequestParam String emailVerificationToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(userService.verifyEmail(emailVerificationToken));
     }
+
+    @PostMapping("/resend/emailVerification/link/username")
+    public ResponseEntity<Map<String, String>> resendEmailVerificationLinkUsername(@RequestParam String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(userService.resendEmailVerificationLinkUsername(username));
+    }
 }

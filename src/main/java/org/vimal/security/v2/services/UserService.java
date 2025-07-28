@@ -132,4 +132,11 @@ public class UserService {
             return emailVerificationTokenRandomConverter.decrypt((String) encryptedUserId, UUID.class);
         throw new BadRequestException("Invalid email verification token");
     }
+
+    public Map<String, String> resendEmailVerificationLinkUsername(String username) {
+        if (unleash.isEnabled(FeatureFlags.RESEND_REGISTRATION_EMAIL_VERIFICATION.name())) {
+            return Map.of("message", "enabled");
+        }
+        throw new BadRequestException("Resending email verification link is currently disabled. Please try again later");
+    }
 }

@@ -10,17 +10,37 @@ import org.vimal.security.v2.models.UserModel;
 
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Objects;
 
 public class UserUtility {
     public static Authentication getAuthenticationOfCurrentAuthenticatedUser() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof UserDetailsImpl))
-            throw new AuthenticationCredentialsNotFoundException("User not authenticated");
-        return authentication;
+        var authentication = getAuthentication();
+        if (checkAuthentication(authentication)) return authentication;
+        throw new AuthenticationCredentialsNotFoundException("User not authenticated");
+    }
+
+    public static Authentication getAuthentication() {
+        return SecurityContextHolder.getContext().getAuthentication();
+    }
+
+    public static boolean checkAuthentication(Authentication authentication) {
+        return Objects.nonNull(authentication) && authentication.isAuthenticated() && isPrincipalInstanceOfUserDetailsImpl(authentication);
+    }
+
+    public static boolean isPrincipalInstanceOfUserDetailsImpl(Authentication authentication) {
+        return isInstanceOfUserDetailsImpl(authentication.getPrincipal());
+    }
+
+    public static boolean isInstanceOfUserDetailsImpl(Object principal) {
+        return principal instanceof UserDetailsImpl;
     }
 
     public static UserDetailsImpl getCurrentAuthenticatedUserDetails() {
-        return (UserDetailsImpl) getAuthenticationOfCurrentAuthenticatedUser().getPrincipal();
+        return getUserDetails(getAuthenticationOfCurrentAuthenticatedUser());
+    }
+
+    public static UserDetailsImpl getUserDetails(Authentication authentication) {
+        return (UserDetailsImpl) authentication.getPrincipal();
     }
 
     public static UserModel getCurrentAuthenticatedUser() {

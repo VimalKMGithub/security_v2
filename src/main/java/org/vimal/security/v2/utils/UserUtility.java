@@ -15,7 +15,7 @@ import java.util.Objects;
 public class UserUtility {
     public static Authentication getAuthenticationOfCurrentAuthenticatedUser() {
         var authentication = getAuthentication();
-        if (checkAuthentication(authentication)) return authentication;
+        if (validateAuthentication(authentication)) return authentication;
         throw new AuthenticationCredentialsNotFoundException("User not authenticated");
     }
 
@@ -23,7 +23,7 @@ public class UserUtility {
         return SecurityContextHolder.getContext().getAuthentication();
     }
 
-    public static boolean checkAuthentication(Authentication authentication) {
+    public static boolean validateAuthentication(Authentication authentication) {
         return Objects.nonNull(authentication) && authentication.isAuthenticated() && isPrincipalInstanceOfUserDetailsImpl(authentication);
     }
 

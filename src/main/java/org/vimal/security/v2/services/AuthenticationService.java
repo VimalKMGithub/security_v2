@@ -94,7 +94,7 @@ public class AuthenticationService {
     }
 
     public UUID generateStateToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var encryptedStateTokenKey = stateTokenStaticConverter.encrypt(STATE_TOKEN_PREFIX + user.getId());
+        var encryptedStateTokenKey = getEncryptedStateTokenKey(user);
         var existingEncryptedStateToken = redisService.get(encryptedStateTokenKey);
         if (existingEncryptedStateToken != null)
             return stateTokenRandomConverter.decrypt((String) existingEncryptedStateToken, UUID.class);
@@ -109,6 +109,10 @@ public class AuthenticationService {
             redisService.delete(encryptedStateTokenMappingKey);
             throw new RuntimeException("Failed to generate state token", ex);
         }
+    }
+
+    public String getEncryptedStateTokenKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return stateTokenStaticConverter.encrypt(STATE_TOKEN_PREFIX + user.getId());
     }
 
     public void handleFailedLogin(String username) {
@@ -287,7 +291,7 @@ public class AuthenticationService {
             throw new BadRequestException("Email MFA is not enabled");
         verifyOTPToLogin(user, otp);
         try {
-            redisService.delete(Set.of(stateTokenStaticConverter.encrypt(STATE_TOKEN_PREFIX + user.getId()), encryptedStateTokenMappingKey));
+            redisService.delete(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey));
         } catch (Exception ignored) {
         }
         return jwtUtility.generateTokens(user);
@@ -431,7 +435,7 @@ public class AuthenticationService {
             throw new BadRequestException("Invalid TOTP");
         }
         try {
-            redisService.delete(Set.of(stateTokenStaticConverter.encrypt(STATE_TOKEN_PREFIX + user.getId()), encryptedStateTokenMappingKey));
+            redisService.delete(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey));
         } catch (Exception ignored) {
         }
         return jwtUtility.generateTokens(user);

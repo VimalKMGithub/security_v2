@@ -206,4 +206,17 @@ public class UserService {
     public String getEncryptedForgotPasswordOtpKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return emailOTPForPWDResetStaticConverter.encrypt(FORGOT_PASSWORD_OTP_PREFIX + user.getId());
     }
+
+    public Map<String, String> forgotPasswordEmail(String email) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        try {
+            ValidationUtility.validateEmail(email);
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid email");
+        }
+        var user = userRepo.findByEmail(email).orElseThrow(() -> new BadRequestException("Invalid email"));
+        if (!user.isEmailVerified())
+            throw new BadRequestException("Email is not verified. Please verify your email before resetting password");
+        mailService.sendOtpAsync(user.getEmail(), "OTP for resetting password using email", generateOTPForForgotPassword(user));
+        return Map.of("message", "OTP sent to your email. Please check your email to reset your password");
+    }
 }

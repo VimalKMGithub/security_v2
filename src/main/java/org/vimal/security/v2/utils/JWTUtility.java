@@ -47,6 +47,8 @@ import java.util.stream.Stream;
 public class JWTUtility {
     private static final long ACCESS_TOKEN_EXPIRES_IN_SECONDS = TimeUnit.MINUTES.toSeconds(30);
     private static final long REFRESH_TOKEN_EXPIRES_IN_SECONDS = TimeUnit.MINUTES.toSeconds(60 * 24 * 7);
+    private static final Duration ACCESS_TOKEN_EXPIRES_IN_DURATION = Duration.ofSeconds(ACCESS_TOKEN_EXPIRES_IN_SECONDS);
+    private static final Duration REFRESH_TOKEN_EXPIRES_IN_DURATION = Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS);
     private static final String JWT_ID_PREFIX = "SECURITY_V2_JWT_ID:";
     private static final String REFRESH_TOKEN_PREFIX = "SECURITY_V2_REFRESH_TOKEN:";
     private static final String REFRESH_TOKEN_MAPPING_PREFIX = "SECURITY_V2_REFRESH_TOKEN_MAPPING:";
@@ -78,7 +80,7 @@ public class JWTUtility {
 
     public UUID generateJWTId(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var jwtId = UUID.randomUUID();
-        redisService.save(jwtStaticConverter.encrypt(JWT_ID_PREFIX + user.getId()), jwtRandomConverter.encrypt(jwtId), Duration.ofSeconds(ACCESS_TOKEN_EXPIRES_IN_SECONDS));
+        redisService.save(jwtStaticConverter.encrypt(JWT_ID_PREFIX + user.getId()), jwtRandomConverter.encrypt(jwtId), ACCESS_TOKEN_EXPIRES_IN_DURATION);
         return jwtId;
     }
 
@@ -131,8 +133,8 @@ public class JWTUtility {
         var refreshToken = UUID.randomUUID();
         var encryptedRefreshTokenMappingKey = refreshTokenStaticConverter.encrypt(REFRESH_TOKEN_MAPPING_PREFIX + refreshToken);
         try {
-            redisService.save(encryptedRefreshTokenKey, refreshTokenRandomConverter.encrypt(refreshToken), Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS));
-            redisService.save(encryptedRefreshTokenMappingKey, refreshTokenRandomConverter.encrypt(user.getId()), Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS));
+            redisService.save(encryptedRefreshTokenKey, refreshTokenRandomConverter.encrypt(refreshToken), REFRESH_TOKEN_EXPIRES_IN_DURATION);
+            redisService.save(encryptedRefreshTokenMappingKey, refreshTokenRandomConverter.encrypt(user.getId()), REFRESH_TOKEN_EXPIRES_IN_DURATION);
             return refreshToken;
         } catch (Exception ex) {
             redisService.delete(encryptedRefreshTokenKey);

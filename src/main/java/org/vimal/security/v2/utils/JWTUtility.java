@@ -124,7 +124,7 @@ public class JWTUtility {
     }
 
     public UUID generateRefreshToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var encryptedRefreshTokenKey = refreshTokenStaticConverter.encrypt(REFRESH_TOKEN_PREFIX + user.getId());
+        var encryptedRefreshTokenKey = getEncryptedRefreshTokenKey(user);
         var existingEncryptedRefreshToken = redisService.get(encryptedRefreshTokenKey);
         if (existingEncryptedRefreshToken != null)
             return refreshTokenRandomConverter.decrypt((String) existingEncryptedRefreshToken, UUID.class);
@@ -139,6 +139,10 @@ public class JWTUtility {
             redisService.delete(encryptedRefreshTokenMappingKey);
             throw new RuntimeException("Failed to generate refresh token", ex);
         }
+    }
+
+    public String getEncryptedRefreshTokenKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return refreshTokenStaticConverter.encrypt(REFRESH_TOKEN_PREFIX + user.getId());
     }
 
     public Map<String, Object> generateAccessToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
@@ -200,10 +204,6 @@ public class JWTUtility {
 
     public void revokeAccessToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         redisService.delete(getEncryptedJWTIdKey(user));
-    }
-
-    public String getEncryptedRefreshTokenKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return refreshTokenStaticConverter.encrypt(REFRESH_TOKEN_PREFIX + user.getId());
     }
 
     public String getEncryptedRefreshTokenMappingKey(String encryptedRefreshToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

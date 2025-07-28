@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.vimal.security.v2.dtos.GenericRegistrationDto;
+import org.vimal.security.v2.dtos.GenericResetPwdDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.services.UserService;
 
@@ -68,4 +69,7 @@ public class UserController {
     }
 
     @PostMapping("/reset/password/username")
+    public ResponseEntity<Map<String, Object>> resetPasswordUsername(@RequestBody GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return userService.resetPasswordUsername(dto);
+    }
 }

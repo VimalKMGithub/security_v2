@@ -11,6 +11,7 @@ import org.vimal.security.v2.converter.EmailOTPForPWDResetStaticConverter;
 import org.vimal.security.v2.converter.EmailVerificationTokenRandomConverter;
 import org.vimal.security.v2.converter.EmailVerificationTokenStaticConverter;
 import org.vimal.security.v2.dtos.GenericRegistrationDto;
+import org.vimal.security.v2.dtos.GenericResetPwdDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
@@ -231,5 +232,8 @@ public class UserService {
         else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
             return forgotPasswordEmail(usernameOrEmail);
         else throw new BadRequestException("Invalid username/email");
+    }
+
+    public ResponseEntity<Map<String, Object>> resetPasswordUsername(GenericResetPwdDto dto) {
     }
 }

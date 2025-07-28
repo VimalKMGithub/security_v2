@@ -72,4 +72,9 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> resetPasswordUsername(@RequestBody GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.resetPasswordUsername(dto);
     }
+
+    @PostMapping("/reset/password/email")
+    public ResponseEntity<Map<String, Object>> resetPasswordEmail(@RequestBody GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return userService.resetPasswordEmail(dto);
+    }
 }

@@ -257,4 +257,15 @@ public class UserService {
         }
         throw new BadRequestException("Invalid OTP");
     }
+
+    public ResponseEntity<Map<String, Object>> resetPasswordEmail(GenericResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var invalidInputs = InputValidationUtility.validateInputs(dto, "email");
+        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        var user = userRepo.findByEmail(dto.email).orElseThrow(() -> new BadRequestException("Invalid email"));
+        verifyOTPForResetPassword(dto, user);
+        user.changePassword(passwordEncoder.encode(dto.password));
+        user.setUpdatedBy("SELF");
+        userRepo.save(user);
+        return ResponseEntity.ok(Map.of("message", "Password reset successful"));
+    }
 }

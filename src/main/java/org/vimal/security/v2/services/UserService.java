@@ -309,7 +309,7 @@ public class UserService {
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
 
-    public Map<String, String> emailChangeRequest(String newEmail) {
+    public Map<String, String> emailChangeRequest(String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         ValidationUtility.validateEmail(newEmail);
         var user = UserUtility.getCurrentAuthenticatedUser();
         if (user.getEmail().equals(newEmail))
@@ -319,5 +319,27 @@ public class UserService {
         var sanitizedEmail = SanitizerUtility.sanitizeEmail(newEmail);
         if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
             throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
+        storeNewEmailForEmailChange(user, newEmail);
+        mailService.sendOtpAsync(newEmail, "OTP for email change", generateOTPForEmailChange(user));
+        return Map.of("message", "OTP sent to your new email. Please check your email to verify your email change");
+    }
+
+    public void storeNewEmailForEmailChange(UserModel user,
+                                            String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        redisService.save(getEncryptedEmailChangeKey(user), emailStoreRandomConverter.encrypt(newEmail), RedisService.DEFAULT_TTL);
+    }
+
+    public String getEncryptedEmailChangeKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return emailStoreStaticConverter.encrypt(EMAIL_STORE_PREFIX + user.getId());
+    }
+
+    public String generateOTPForEmailChange(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var otp = OTPUtility.generateOtp();
+        redisService.save(getEncryptedEmailChangeOTPKey(user), emailOTPForEmailChangeRandomConverter.encrypt(otp), RedisService.DEFAULT_TTL);
+        return otp;
+    }
+
+    public String getEncryptedEmailChangeOTPKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return emailOTPForEmailChangeStaticConverter.encrypt(EMAIL_CHANGE_OTP_PREFIX + user.getId());
     }
 }

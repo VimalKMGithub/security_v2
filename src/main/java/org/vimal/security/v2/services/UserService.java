@@ -463,7 +463,8 @@ public class UserService {
         return emailOTPToDeleteAccountStaticConverter.encrypt(EMAIL_OTP_TO_DELETE_ACCOUNT_PREFIX + user.getId());
     }
 
-    public Map<String, String> verifyOTPToDeleteAccount(String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public Map<String, String> verifyOTPToDeleteAccount(String otp,
+                                                        String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.ACCOUNT_DELETION_ALLOWED.name())) {
             if (!unleash.isEnabled(FeatureFlags.MFA.name()))
                 throw new ServiceUnavailableException("MFA is disabled globally");
@@ -480,6 +481,8 @@ public class UserService {
                 throw new BadRequestException("Invalid OTP");
             redisService.delete(encryptedEmailOTPToDeleteAccountKey);
             user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+            if (!passwordEncoder.matches(password, user.getPassword()))
+                throw new BadRequestException("Invalid password");
             jwtUtility.revokeTokens(user);
             user.recordAccountDeletion();
             userRepo.save(user);
@@ -489,7 +492,8 @@ public class UserService {
         throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
     }
 
-    public Map<String, String> verifyTOTPToDeleteAccount(String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public Map<String, String> verifyTOTPToDeleteAccount(String totp,
+                                                         String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.ACCOUNT_DELETION_ALLOWED.name())) {
             UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
             var user = UserUtility.getCurrentAuthenticatedUser();
@@ -498,6 +502,8 @@ public class UserService {
             user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
             if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp))
                 throw new BadRequestException("Invalid TOTP");
+            if (!passwordEncoder.matches(password, user.getPassword()))
+                throw new BadRequestException("Invalid password");
             jwtUtility.revokeTokens(user);
             user.recordAccountDeletion();
             userRepo.save(user);

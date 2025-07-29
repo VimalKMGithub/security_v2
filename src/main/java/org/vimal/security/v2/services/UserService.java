@@ -305,4 +305,16 @@ public class UserService {
         userRepo.save(user);
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
+
+    public Map<String, String> emailChangeRequest(String newEmail) {
+        ValidationUtility.validateEmail(newEmail);
+        var user = UserUtility.getCurrentAuthenticatedUser();
+        if (user.getEmail().equals(newEmail))
+            throw new BadRequestException("New email cannot be same as current email");
+        if (userRepo.existsByEmail(newEmail))
+            throw new BadRequestException("Email: '" + newEmail + "' is already registered");
+        var sanitizedEmail = SanitizerUtility.sanitizeEmail(newEmail);
+        if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
+            throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
+    }
 }

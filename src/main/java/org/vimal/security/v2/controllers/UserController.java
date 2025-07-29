@@ -93,8 +93,9 @@ public class UserController {
 
     @PostMapping("/verify/email/change")
     public ResponseEntity<Map<String, Object>> verifyEmailChange(@RequestParam String newEmailOtp,
-                                                                 @RequestParam String oldEmailOtp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(userService.verifyEmailChange(newEmailOtp, oldEmailOtp));
+                                                                 @RequestParam String oldEmailOtp,
+                                                                 @RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(userService.verifyEmailChange(newEmailOtp, oldEmailOtp, password));
     }
 
     @DeleteMapping("/delete/account/password")

@@ -365,7 +365,8 @@ public class UserService {
     }
 
     public Map<String, Object> verifyEmailChange(String newEmailOtp,
-                                                 String oldEmailOtp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+                                                 String oldEmailOtp,
+                                                 String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.EMAIL_CHANGE_ENABLED.name())) {
             try {
                 ValidationUtility.validateOTP(newEmailOtp, "New email OTP");
@@ -396,6 +397,8 @@ public class UserService {
             if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
                 throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
             user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+            if (!passwordEncoder.matches(password, user.getPassword()))
+                throw new BadRequestException("Invalid password");
             user.setEmail(newEmail);
             user.setRealEmail(sanitizedEmail);
             jwtUtility.revokeTokens(user);

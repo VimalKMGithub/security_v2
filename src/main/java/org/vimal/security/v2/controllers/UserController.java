@@ -100,7 +100,7 @@ public class UserController {
         return ResponseEntity.ok(userService.verifyEmailChange(newEmailOtp, oldEmailOtp));
     }
 
-    @PostMapping("/delete/account/password")
+    @DeleteMapping("/delete/account/password")
     public ResponseEntity<Map<String, Object>> deleteAccountPassword(@RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.deleteAccountPassword(password);
     }

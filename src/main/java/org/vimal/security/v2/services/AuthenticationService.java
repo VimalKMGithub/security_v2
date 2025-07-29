@@ -88,7 +88,7 @@ public class AuthenticationService {
                     return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", user.getEnabledMfaMethods());
             }
             if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name()))
-                return Map.of("message", "MFA required. Please continue with email MFA", "state_token", generateStateToken(user));
+                return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", Set.of(UserModel.MfaType.EMAIL));
         }
         return jwtUtility.generateTokens(user);
     }

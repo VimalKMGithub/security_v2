@@ -283,5 +283,12 @@ public class UserService {
     }
 
     public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(ResetPwdUsingOldPwdDto dto) {
+        var invalidInputs = InputValidationUtility.validateInputsPasswordAndConfirmPassword(dto);
+        try {
+            ValidationUtility.validatePassword(dto.getOldPassword());
+        } catch (BadRequestException ex) {
+            invalidInputs.add("Invalid old password");
+        }
+        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
     }
 }

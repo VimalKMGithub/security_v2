@@ -38,6 +38,7 @@ public class UserService {
     private static final String EMAIL_CHANGE_OTP_PREFIX = "SECURITY_V2_EMAIL_CHANGE_OTP:";
     private static final String EMAIL_CHANGE_OTP_FOR_OLD_EMAIL_PREFIX = "SECURITY_V2_EMAIL_CHANGE_OTP_FOR_OLD_EMAIL:";
     private static final String EMAIL_STORE_PREFIX = "SECURITY_V2_EMAIL_STORE:";
+    private static final String EMAIL_OTP_TO_DELETE_ACCOUNT_PREFIX = "SECURITY_V2_EMAIL_OTP_TO_DELETE_ACCOUNT:";
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
@@ -54,6 +55,8 @@ public class UserService {
     private final EmailStoreRandomConverter emailStoreRandomConverter;
     private final EmailOTPForEmailChangeForOldEmailStaticConverter emailOTPForEmailChangeForOldEmailStaticConverter;
     private final EmailOTPForEmailChangeForOldEmailRandomConverter emailOTPForEmailChangeForOldEmailRandomConverter;
+    private final EmailOTPToDeleteAccountStaticConverter emailOTPToDeleteAccountStaticConverter;
+    private final EmailOTPToDeleteAccountRandomConverter emailOTPToDeleteAccountRandomConverter;
 
     public ResponseEntity<Map<String, Object>> register(RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.REGISTRATION_ENABLED.name())) {
@@ -433,6 +436,55 @@ public class UserService {
         throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
     }
 
-    public Map<String, String> sendOTPToDeleteAccount() {
+    public Map<String, String> sendOTPToDeleteAccount() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (unleash.isEnabled(FeatureFlags.ACCOUNT_DELETION_ALLOWED.name())) {
+            if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+                throw new ServiceUnavailableException("MFA is disabled globally");
+            var forcedMFA = unleash.isEnabled(FeatureFlags.FORCE_MFA.name());
+            if (!forcedMFA) if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                throw new ServiceUnavailableException("Email MFA is disabled globally");
+            var user = UserUtility.getCurrentAuthenticatedUser();
+            if (!forcedMFA && !user.hasMfaEnabled(UserModel.MfaType.EMAIL))
+                throw new BadRequestException("Email MFA is not enabled");
+            mailService.sendOtpAsync(user.getEmail(), "OTP for account deletion", generateOTPForAccountDeletion(user));
+            return Map.of("message", "OTP sent to your email. Please check your email to delete your account");
+        }
+        throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
+    }
+
+    public String generateOTPForAccountDeletion(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var otp = OTPUtility.generateOtp();
+        redisService.save(getEncryptedEmailOTPToDeleteAccountKey(user), emailOTPToDeleteAccountRandomConverter.encrypt(otp), RedisService.DEFAULT_TTL);
+        return otp;
+    }
+
+    public String getEncryptedEmailOTPToDeleteAccountKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return emailOTPToDeleteAccountStaticConverter.encrypt(EMAIL_OTP_TO_DELETE_ACCOUNT_PREFIX + user.getId());
+    }
+
+    public Map<String, String> verifyOTPToDeleteAccount(String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (unleash.isEnabled(FeatureFlags.ACCOUNT_DELETION_ALLOWED.name())) {
+            if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+                throw new ServiceUnavailableException("MFA is disabled globally");
+            var forcedMFA = unleash.isEnabled(FeatureFlags.FORCE_MFA.name());
+            if (!forcedMFA) if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                throw new ServiceUnavailableException("Email MFA is disabled globally");
+            var user = UserUtility.getCurrentAuthenticatedUser();
+            if (!forcedMFA && !user.hasMfaEnabled(UserModel.MfaType.EMAIL))
+                throw new BadRequestException("Email MFA is not enabled");
+            var encryptedEmailOTPToDeleteAccountKey = getEncryptedEmailOTPToDeleteAccountKey(user);
+            var encryptedOtp = redisService.get(encryptedEmailOTPToDeleteAccountKey);
+            if (Objects.isNull(encryptedOtp)) throw new BadRequestException("Invalid OTP");
+            if (!emailOTPToDeleteAccountRandomConverter.decrypt((String) encryptedOtp, String.class).equals(otp))
+                throw new BadRequestException("Invalid OTP");
+            redisService.delete(encryptedEmailOTPToDeleteAccountKey);
+            user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+            jwtUtility.revokeTokens(user);
+            user.recordAccountDeletion();
+            userRepo.save(user);
+            mailService.sendAccountDeletionConfirmationAsync(user.getEmail(), "Account deletion confirmation");
+            return Map.of("message", "Account deleted successfully");
+        }
+        throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
     }
 }

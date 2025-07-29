@@ -333,10 +333,10 @@ public class UserService {
 
     public void storeNewEmailForEmailChange(UserModel user,
                                             String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        redisService.save(getEncryptedEmailChangeKey(user), emailStoreRandomConverter.encrypt(newEmail), RedisService.DEFAULT_TTL);
+        redisService.save(getEncryptedEmailKey(user), emailStoreRandomConverter.encrypt(newEmail), RedisService.DEFAULT_TTL);
     }
 
-    public String getEncryptedEmailChangeKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public String getEncryptedEmailKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return emailStoreStaticConverter.encrypt(EMAIL_STORE_PREFIX + user.getId());
     }
 
@@ -358,5 +358,20 @@ public class UserService {
 
     public String getEncryptedEmailChangeForOldEmailOTPKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return emailOTPForEmailChangeForOldEmailStaticConverter.encrypt(EMAIL_CHANGE_OTP_FOR_OLD_EMAIL_PREFIX + user.getId());
+    }
+
+    public Map<String, Object> verifyEmailChange(String newEmailOtp,
+                                                 String oldEmailOtp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (unleash.isEnabled(FeatureFlags.EMAIL_CHANGE_ENABLED.name())) {
+            try {
+                ValidationUtility.validateOTP(newEmailOtp, "New email OTP");
+                ValidationUtility.validateOTP(oldEmailOtp, "Old email OTP");
+            } catch (BadRequestException ex) {
+                throw new BadRequestException("Invalid OTPs");
+            }
+            var user = UserUtility.getCurrentAuthenticatedUser();
+            var encryptedEmailChangeOTPKey = getEncryptedEmailChangeOTPKey(user);
+        }
+        throw new BadRequestException("Email change is currently disabled. Please try again later");
     }
 }

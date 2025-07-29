@@ -57,6 +57,7 @@ public class UserService {
     private final EmailOTPForEmailChangeForOldEmailRandomConverter emailOTPForEmailChangeForOldEmailRandomConverter;
     private final EmailOTPToDeleteAccountStaticConverter emailOTPToDeleteAccountStaticConverter;
     private final EmailOTPToDeleteAccountRandomConverter emailOTPToDeleteAccountRandomConverter;
+    private final AuthenticatorAppSecretRandomConverter authenticatorAppSecretRandomConverter;
 
     public ResponseEntity<Map<String, Object>> register(RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.REGISTRATION_ENABLED.name())) {
@@ -488,8 +489,20 @@ public class UserService {
         throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
     }
 
-    public Map<String, String> verifyTOTPToDeleteAccount(String totp) {
+    public Map<String, String> verifyTOTPToDeleteAccount(String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.ACCOUNT_DELETION_ALLOWED.name())) {
+            UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
+            var user = UserUtility.getCurrentAuthenticatedUser();
+            if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                throw new BadRequestException("Authenticator app MFA is disabled");
+            user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+            if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp))
+                throw new BadRequestException("Invalid TOTP");
+            jwtUtility.revokeTokens(user);
+            user.recordAccountDeletion();
+            userRepo.save(user);
+            mailService.sendAccountDeletionConfirmationAsync(user.getEmail(), "Account deletion confirmation");
+            return Map.of("message", "Account deleted successfully");
         }
         throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
     }

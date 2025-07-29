@@ -329,7 +329,7 @@ public class UserService {
             storeNewEmailForEmailChange(user, newEmail);
             mailService.sendOtpAsync(newEmail, "OTP for email change", generateOTPForEmailChange(user));
             mailService.sendOtpAsync(user.getEmail(), "OTP for email change for old email", generateOTPForEmailChangeForOldEmail(user));
-            return Map.of("message", "OTP sent to your new email. Please check your email to verify your email change");
+            return Map.of("message", "OTP sent to your new & old email. Please check your email to verify your email change");
         }
         throw new ServiceUnavailableException("Email change is currently disabled. Please try again later");
     }

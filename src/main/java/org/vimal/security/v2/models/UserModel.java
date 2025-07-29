@@ -69,6 +69,20 @@ public class UserModel {
     @Column(name = "account_locked", nullable = false)
     private boolean accountLocked = false;
 
+    @JsonIgnore
+    @Builder.Default
+    @Column(name = "account_deleted", nullable = false)
+    private boolean accountDeleted = false;
+
+    @JsonIgnore
+    @Column(name = "account_deleted_at")
+    private Instant accountDeletedAt;
+
+    public void recordAccountDeletion() {
+        this.accountDeleted = true;
+        this.accountDeletedAt = Instant.now();
+    }
+
     @Builder.Default
     @Column(name = "account_enabled", nullable = false)
     private boolean accountEnabled = true;

@@ -26,6 +26,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     public void checkAccountStatus(UserModel user) {
+        if (user.isAccountDeleted()) throw new UsernameNotFoundException("Invalid credentials");
         if (!user.isEmailVerified()) throw new MailNotVerifiedException("Please verify your email first");
         if (user.isAccountLocked() && user.getLastLockedAt().plus(1, ChronoUnit.DAYS).isAfter(Instant.now()))
             throw new CustomLockedException("Account is temporarily locked. Please try again later.");

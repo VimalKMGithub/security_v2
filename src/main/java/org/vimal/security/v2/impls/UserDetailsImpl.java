@@ -73,6 +73,10 @@ public class UserDetailsImpl implements UserDetails {
         return userModel.isAccountEnabled();
     }
 
+    public boolean isAccountDeleted() {
+        return userModel.isAccountDeleted();
+    }
+
     public String getEmail() {
         return userModel.getEmail();
     }

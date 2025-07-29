@@ -12,6 +12,7 @@ import org.vimal.security.v2.converter.EmailVerificationTokenRandomConverter;
 import org.vimal.security.v2.converter.EmailVerificationTokenStaticConverter;
 import org.vimal.security.v2.dtos.RegistrationDto;
 import org.vimal.security.v2.dtos.ResetPwdDto;
+import org.vimal.security.v2.dtos.ResetPwdUsingOldPwdDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
@@ -279,5 +280,8 @@ public class UserService {
             dto.setEmail(dto.getUsernameOrEmail());
             return resetPasswordEmail(dto);
         } else throw new BadRequestException("Invalid username/email");
+    }
+
+    public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(ResetPwdUsingOldPwdDto dto) {
     }
 }

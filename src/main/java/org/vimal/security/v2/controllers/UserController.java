@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.vimal.security.v2.dtos.RegistrationDto;
 import org.vimal.security.v2.dtos.ResetPwdDto;
+import org.vimal.security.v2.dtos.ResetPwdUsingOldPwdDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.services.UserService;
 
@@ -81,5 +82,10 @@ public class UserController {
     @PostMapping("/reset/password")
     public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.resetPassword(dto);
+    }
+
+    @PostMapping("/reset/password/using/oldPassword")
+    public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(@RequestBody ResetPwdUsingOldPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return userService.resetPasswordUsingOldPassword(dto);
     }
 }

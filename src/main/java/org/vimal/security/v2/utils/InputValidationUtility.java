@@ -45,7 +45,7 @@ public class InputValidationUtility {
 
     public static Collection<String> validateInputs(ResetPwdDto dto,
                                                     String type) {
-        var validationErrors = new HashSet<String>();
+        var validationErrors = validateInputsPasswordAndConfirmPassword(dto);
         switch (type) {
             case "username" -> {
                 try {
@@ -74,6 +74,11 @@ public class InputValidationUtility {
         } catch (BadRequestException ex) {
             validationErrors.add("Invalid OTP");
         }
+        return validationErrors;
+    }
+
+    public static Collection<String> validateInputsPasswordAndConfirmPassword(ResetPwdDto dto) {
+        var validationErrors = new HashSet<String>();
         try {
             ValidationUtility.validatePassword(dto.password);
             if (!dto.password.equals(dto.confirmPassword))

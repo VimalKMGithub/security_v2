@@ -24,6 +24,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -41,6 +42,7 @@ public class UserService {
     private final MailService mailService;
     private final RedisService redisService;
     private final Unleash unleash;
+    private final JWTUtility jwtUtility;
     private final EmailVerificationTokenStaticConverter emailVerificationTokenStaticConverter;
     private final EmailVerificationTokenRandomConverter emailVerificationTokenRandomConverter;
     private final EmailOTPForPWDResetStaticConverter emailOTPForPWDResetStaticConverter;
@@ -371,6 +373,36 @@ public class UserService {
             }
             var user = UserUtility.getCurrentAuthenticatedUser();
             var encryptedEmailChangeOTPKey = getEncryptedEmailChangeOTPKey(user);
+            var encryptedNewEmailOtp = redisService.get(encryptedEmailChangeOTPKey);
+            if (Objects.isNull(encryptedNewEmailOtp)) throw new BadRequestException("Invalid OTPs");
+            if (!emailOTPForEmailChangeRandomConverter.decrypt((String) encryptedNewEmailOtp, String.class).equals(newEmailOtp))
+                throw new BadRequestException("Invalid OTPs");
+            var encryptedEmailChangeForOldEmailOTPKey = getEncryptedEmailChangeForOldEmailOTPKey(user);
+            var encryptedOldEmailOtp = redisService.get(encryptedEmailChangeForOldEmailOTPKey);
+            if (Objects.isNull(encryptedOldEmailOtp)) throw new BadRequestException("Invalid OTPs");
+            if (!emailOTPForEmailChangeForOldEmailRandomConverter.decrypt((String) encryptedOldEmailOtp, String.class).equals(oldEmailOtp))
+                throw new BadRequestException("Invalid OTPs");
+            var encryptedEmailKey = getEncryptedEmailKey(user);
+            var encryptedNewEmail = redisService.get(encryptedEmailKey);
+            if (Objects.isNull(encryptedNewEmail)) throw new BadRequestException("Invalid email change request");
+            var newEmail = emailStoreRandomConverter.decrypt((String) encryptedNewEmail, String.class);
+            if (user.getEmail().equals(newEmail))
+                throw new BadRequestException("New email cannot be same as current email");
+            if (userRepo.existsByEmail(newEmail))
+                throw new BadRequestException("Email: '" + newEmail + "' is already registered");
+            var sanitizedEmail = SanitizerUtility.sanitizeEmail(newEmail);
+            if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
+                throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
+            user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+            user.setEmail(newEmail);
+            user.setRealEmail(sanitizedEmail);
+            jwtUtility.revokeAccessToken(user);
+            jwtUtility.revokeRefreshToken(user);
+            try {
+                redisService.delete(Set.of(encryptedEmailChangeOTPKey, encryptedEmailChangeForOldEmailOTPKey, encryptedEmailKey));
+            } catch (Exception ignored) {
+            }
+            return Map.of("message", "Email change successful. Please login again to continue", "user", MapperUtility.toUserSummaryDto(userRepo.save(user)));
         }
         throw new BadRequestException("Email change is currently disabled. Please try again later");
     }

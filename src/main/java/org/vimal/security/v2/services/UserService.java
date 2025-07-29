@@ -7,10 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.vimal.security.v2.converter.*;
-import org.vimal.security.v2.dtos.RegistrationDto;
-import org.vimal.security.v2.dtos.ResetPwdDto;
-import org.vimal.security.v2.dtos.ResetPwdUsingOldPwdDto;
-import org.vimal.security.v2.dtos.UserSummaryDto;
+import org.vimal.security.v2.dtos.*;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.exceptions.ServiceUnavailableException;
@@ -511,5 +508,21 @@ public class UserService {
             return Map.of("message", "Account deleted successfully");
         }
         throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
+    }
+
+    public ResponseEntity<Map<String, Object>> updateDetails(UpdationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var user = userRepo.findById(UserUtility.getCurrentAuthenticatedUser().getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+        var userModificationResult = ValidateAndSetUpdateInputUtility.validateAndSet(user, dto, userRepo, passwordEncoder);
+        if (!userModificationResult.getInvalidInputs().isEmpty())
+            return ResponseEntity.badRequest().body(Map.of("invalid_inputs", userModificationResult.getInvalidInputs()));
+        if (userModificationResult.isModified()) {
+            user.setUpdatedBy("SELF");
+            if (userModificationResult.isShouldRemoveTokens()) {
+                jwtUtility.revokeTokens(user);
+                return ResponseEntity.ok(Map.of("message", "User details updated successfully. Please login again to continue", "user", MapperUtility.toUserSummaryDto(userRepo.save(user))));
+            }
+            return ResponseEntity.ok(Map.of("message", "User details updated successfully", "user", MapperUtility.toUserSummaryDto(userRepo.save(user))));
+        }
+        return ResponseEntity.ok(Map.of("message", "No details were updated", "user", MapperUtility.toUserSummaryDto(user)));
     }
 }

@@ -4,10 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.vimal.security.v2.dtos.RegistrationDto;
-import org.vimal.security.v2.dtos.ResetPwdDto;
-import org.vimal.security.v2.dtos.ResetPwdUsingOldPwdDto;
-import org.vimal.security.v2.dtos.UserSummaryDto;
+import org.vimal.security.v2.dtos.*;
 import org.vimal.security.v2.services.UserService;
 
 import javax.crypto.BadPaddingException;
@@ -120,5 +117,10 @@ public class UserController {
     public ResponseEntity<Map<String, String>> verifyTOTPToDeleteAccount(@RequestParam String totp,
                                                                          @RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(userService.verifyTOTPToDeleteAccount(totp, password));
+    }
+
+    @PutMapping("/update/details")
+    public ResponseEntity<Map<String, Object>> updateDetails(@RequestBody UpdationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return userService.updateDetails(dto);
     }
 }

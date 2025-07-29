@@ -352,18 +352,11 @@ public class AuthenticationService {
     }
 
     public byte[] generateQRCodeForAuthenticatorApp() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, WriterException {
-        checkMFAAndAuthenticatorAppMFAEnabledGlobally();
+        UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
         var user = UserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
             throw new BadRequestException("Authenticator app MFA is already enabled");
         return QRUtility.generateQRCode(TOTPUtility.generateTOTPUrl("God Level Security", user.getUsername(), generateAuthenticatorAppSecret(user)));
-    }
-
-    public void checkMFAAndAuthenticatorAppMFAEnabledGlobally() {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
-            throw new ServiceUnavailableException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
-            throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
     }
 
     public String generateAuthenticatorAppSecret(UserModel user) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -377,7 +370,7 @@ public class AuthenticationService {
     }
 
     public Map<String, String> verifyTOTPToSetupAuthenticatorApp(String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        checkMFAAndAuthenticatorAppMFAEnabledGlobally();
+        UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
         try {
             ValidationUtility.validateOTP(totp, "TOTP");
         } catch (BadRequestException ex) {
@@ -416,7 +409,7 @@ public class AuthenticationService {
 
     public Map<String, Object> verifyTOTPToLogin(String totp,
                                                  String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
-        checkMFAAndAuthenticatorAppMFAEnabledGlobally();
+        UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
         try {
             ValidationUtility.validateOTP(totp, "TOTP");
             ValidationUtility.validateUuid(stateToken, "State token");
@@ -442,7 +435,7 @@ public class AuthenticationService {
 
     public Map<String, String> verifyTOTPToDisableAuthenticatorAppMFA(String totp,
                                                                       String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        checkMFAAndAuthenticatorAppMFAEnabledGlobally();
+        UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
         try {
             ValidationUtility.validateOTP(totp, "TOTP");
             ValidationUtility.validatePassword(password);

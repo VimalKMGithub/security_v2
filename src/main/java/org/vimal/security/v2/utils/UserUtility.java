@@ -7,6 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.enums.SystemRoles;
+import org.vimal.security.v2.exceptions.ServiceUnavailableException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
 
@@ -94,5 +95,12 @@ public class UserUtility {
                 shouldDoMFA = true;
         }
         return shouldDoMFA;
+    }
+
+    public static void checkMFAAndAuthenticatorAppMFAEnabledGlobally(Unleash unleash) {
+        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+            throw new ServiceUnavailableException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+            throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
     }
 }

@@ -310,18 +310,21 @@ public class UserService {
     }
 
     public Map<String, String> emailChangeRequest(String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        ValidationUtility.validateEmail(newEmail);
-        var user = UserUtility.getCurrentAuthenticatedUser();
-        if (user.getEmail().equals(newEmail))
-            throw new BadRequestException("New email cannot be same as current email");
-        if (userRepo.existsByEmail(newEmail))
-            throw new BadRequestException("Email: '" + newEmail + "' is already registered");
-        var sanitizedEmail = SanitizerUtility.sanitizeEmail(newEmail);
-        if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
-            throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
-        storeNewEmailForEmailChange(user, newEmail);
-        mailService.sendOtpAsync(newEmail, "OTP for email change", generateOTPForEmailChange(user));
-        return Map.of("message", "OTP sent to your new email. Please check your email to verify your email change");
+        if (unleash.isEnabled(FeatureFlags.EMAIL_CHANGE_ENABLED.name())) {
+            ValidationUtility.validateEmail(newEmail);
+            var user = UserUtility.getCurrentAuthenticatedUser();
+            if (user.getEmail().equals(newEmail))
+                throw new BadRequestException("New email cannot be same as current email");
+            if (userRepo.existsByEmail(newEmail))
+                throw new BadRequestException("Email: '" + newEmail + "' is already registered");
+            var sanitizedEmail = SanitizerUtility.sanitizeEmail(newEmail);
+            if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
+                throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
+            storeNewEmailForEmailChange(user, newEmail);
+            mailService.sendOtpAsync(newEmail, "OTP for email change", generateOTPForEmailChange(user));
+            return Map.of("message", "OTP sent to your new email. Please check your email to verify your email change");
+        }
+        throw new BadRequestException("Email change is currently disabled. Please try again later");
     }
 
     public void storeNewEmailForEmailChange(UserModel user,

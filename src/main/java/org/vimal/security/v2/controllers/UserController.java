@@ -90,7 +90,7 @@ public class UserController {
     }
 
     @PostMapping("/email/change/request")
-    public ResponseEntity<Map<String, String>> emailChangeRequest(@RequestParam String newEmail) {
+    public ResponseEntity<Map<String, String>> emailChangeRequest(@RequestParam String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(userService.emailChangeRequest(newEmail));
     }
 }

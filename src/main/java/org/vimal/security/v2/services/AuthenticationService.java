@@ -154,8 +154,7 @@ public class AuthenticationService {
 
     public Map<String, String> logout() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUser();
-        jwtUtility.revokeAccessToken(user);
-        jwtUtility.revokeRefreshToken(user);
+        jwtUtility.revokeTokens(user);
         return Map.of("message", "Logout successful");
     }
 
@@ -220,8 +219,7 @@ public class AuthenticationService {
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
         user.enableMfaMethod(UserModel.MfaType.EMAIL);
         user.setUpdatedBy("SELF");
-        jwtUtility.revokeAccessToken(user);
-        jwtUtility.revokeRefreshToken(user);
+        jwtUtility.revokeTokens(user);
         userRepo.save(user);
         return Map.of("message", "Email MFA enabled successfully. Please log in again to continue");
     }
@@ -344,8 +342,7 @@ public class AuthenticationService {
         if (!passwordEncoder.matches(password, user.getPassword())) throw new BadRequestException("Invalid password");
         user.disableMfaMethod(UserModel.MfaType.EMAIL);
         user.setUpdatedBy("SELF");
-        jwtUtility.revokeAccessToken(user);
-        jwtUtility.revokeRefreshToken(user);
+        jwtUtility.revokeTokens(user);
         userRepo.save(user);
         return Map.of("message", "Email MFA disabled successfully. Please log in again to continue");
     }
@@ -386,8 +383,7 @@ public class AuthenticationService {
             throw new BadRequestException("Authenticator app MFA is already enabled");
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
         verifyTOTP(user, totp);
-        jwtUtility.revokeAccessToken(user);
-        jwtUtility.revokeRefreshToken(user);
+        jwtUtility.revokeTokens(user);
         userRepo.save(user);
         return Map.of("message", "Authenticator app MFA enabled successfully. Please log in again to continue");
     }
@@ -458,8 +454,7 @@ public class AuthenticationService {
         user.disableMfaMethod(UserModel.MfaType.AUTHENTICATOR_APP);
         user.setAuthAppSecret(null);
         user.setUpdatedBy("SELF");
-        jwtUtility.revokeAccessToken(user);
-        jwtUtility.revokeRefreshToken(user);
+        jwtUtility.revokeTokens(user);
         userRepo.save(user);
         return Map.of("message", "Authenticator app MFA disabled successfully. Please log in again to continue");
     }

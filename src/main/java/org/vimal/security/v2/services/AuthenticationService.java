@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.vimal.security.v2.converter.*;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
+import org.vimal.security.v2.exceptions.ServiceUnavailableException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.UserRepo;
@@ -191,9 +192,10 @@ public class AuthenticationService {
     }
 
     public void checkMFAAndEmailMFAEnabledGlobally() {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+            throw new ServiceUnavailableException("MFA is disabled globally");
         if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new BadRequestException("Email MFA is disabled globally");
+            throw new ServiceUnavailableException("Email MFA is disabled globally");
     }
 
     public String generateOTPForEmailMFA(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -239,10 +241,11 @@ public class AuthenticationService {
     }
 
     public Map<String, String> sendEmailOTPToVerifyEmailMFAToLogin(String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+            throw new ServiceUnavailableException("MFA is disabled globally");
         var forcedMFA = unleash.isEnabled(FeatureFlags.FORCE_MFA.name());
         if (!forcedMFA) if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new BadRequestException("Email MFA is disabled globally");
+            throw new ServiceUnavailableException("Email MFA is disabled globally");
         try {
             ValidationUtility.validateUuid(stateToken, "State token");
         } catch (BadRequestException ex) {
@@ -271,10 +274,11 @@ public class AuthenticationService {
 
     public Map<String, Object> verifyEmailOTPToLogin(String otp,
                                                      String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+            throw new ServiceUnavailableException("MFA is disabled globally");
         var forcedMFA = unleash.isEnabled(FeatureFlags.FORCE_MFA.name());
         if (!forcedMFA) if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new BadRequestException("Email MFA is disabled globally");
+            throw new ServiceUnavailableException("Email MFA is disabled globally");
         try {
             ValidationUtility.validateOTP(otp, "OTP");
             ValidationUtility.validateUuid(stateToken, "State token");
@@ -356,9 +360,10 @@ public class AuthenticationService {
     }
 
     public void checkMFAAndAuthenticatorAppMFAEnabledGlobally() {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+            throw new ServiceUnavailableException("MFA is disabled globally");
         if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
-            throw new BadRequestException("Authenticator app MFA is disabled globally");
+            throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
     }
 
     public String generateAuthenticatorAppSecret(UserModel user) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, JsonProcessingException {

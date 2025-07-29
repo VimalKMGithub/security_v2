@@ -432,4 +432,7 @@ public class UserService {
         }
         throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
     }
+
+    public Map<String, String> sendOTPToDeleteAccount() {
+    }
 }

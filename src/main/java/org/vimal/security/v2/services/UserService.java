@@ -427,6 +427,7 @@ public class UserService {
             jwtUtility.revokeTokens(user);
             user.recordAccountDeletion();
             userRepo.save(user);
+            mailService.sendAccountDeletionConfirmationAsync(user.getEmail(), "Account deletion confirmation");
             return ResponseEntity.ok(Map.of("message", "Account deleted successfully"));
         }
         throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");

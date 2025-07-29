@@ -9,6 +9,12 @@ import org.springframework.stereotype.Service;
 public class MailService {
     private final RetryMailService retryMailService;
 
+    public void sendEmail(String to,
+                          String subject,
+                          String text) {
+        retryMailService.sendEmail(to, subject, text);
+    }
+
     public void sendOtp(String to,
                         String subject,
                         String otp) {
@@ -18,7 +24,7 @@ public class MailService {
                         """,
                 otp
         );
-        retryMailService.sendEmail(to, subject, text);
+        sendEmail(to, subject, text);
     }
 
     @Async
@@ -37,7 +43,7 @@ public class MailService {
                         """,
                 link
         );
-        retryMailService.sendEmail(to, subject, text);
+        sendEmail(to, subject, text);
     }
 
     @Async
@@ -45,5 +51,20 @@ public class MailService {
                                    String subject,
                                    String link) {
         sendLinkEmail(to, subject, link);
+    }
+
+    public void sendAccountDeletionConfirmation(String to,
+                                                String subject) {
+        var text = """
+                Your account has been deleted successfully & will be completely removed from backup after 30 days.
+                If this was a mistake or you want to recover your account or not done by you, please contact support immediately.
+                """;
+        sendEmail(to, subject, text);
+    }
+
+    @Async
+    public void sendAccountDeletionConfirmationAsync(String to,
+                                                     String subject) {
+        sendAccountDeletionConfirmation(to, subject);
     }
 }

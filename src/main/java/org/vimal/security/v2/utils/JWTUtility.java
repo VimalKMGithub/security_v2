@@ -35,10 +35,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -230,10 +227,18 @@ public class JWTUtility {
     public void revokeRefreshToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedRefreshTokenKey = getEncryptedRefreshTokenKey(user);
         var encryptedRefreshToken = redisService.get(encryptedRefreshTokenKey);
-        if (encryptedRefreshToken != null) {
-            redisService.delete(getEncryptedRefreshTokenMappingKey((String) encryptedRefreshToken));
-        }
-        redisService.delete(encryptedRefreshTokenKey);
+        if (encryptedRefreshToken != null)
+            redisService.delete(Set.of(encryptedRefreshTokenKey, getEncryptedRefreshTokenMappingKey((String) encryptedRefreshToken)));
+        else redisService.delete(encryptedRefreshTokenKey);
+    }
+
+    public void revokeTokens(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var encryptedJWTIdKey = getEncryptedJWTIdKey(user);
+        var encryptedRefreshTokenKey = getEncryptedRefreshTokenKey(user);
+        var encryptedRefreshToken = redisService.get(encryptedRefreshTokenKey);
+        if (encryptedRefreshToken != null)
+            redisService.delete(Set.of(encryptedJWTIdKey, encryptedRefreshTokenKey, getEncryptedRefreshTokenMappingKey((String) encryptedRefreshToken)));
+        else redisService.delete(Set.of(encryptedJWTIdKey, encryptedRefreshTokenKey));
     }
 
     public void revokeRefreshToken(String refreshToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

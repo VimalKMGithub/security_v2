@@ -34,6 +34,7 @@ public class UserService {
     private static final String EMAIL_VERIFICATION_TOKEN_MAPPING_PREFIX = "SECURITY_V2_EMAIL_VERIFICATION_TOKEN_MAPPING:";
     private static final String FORGOT_PASSWORD_OTP_PREFIX = "SECURITY_V2_FORGOT_PASSWORD_OTP:";
     private static final String EMAIL_CHANGE_OTP_PREFIX = "SECURITY_V2_EMAIL_CHANGE_OTP:";
+    private static final String EMAIL_CHANGE_OTP_FOR_OLD_EMAIL_PREFIX = "SECURITY_V2_EMAIL_CHANGE_OTP_FOR_OLD_EMAIL:";
     private static final String EMAIL_STORE_PREFIX = "SECURITY_V2_EMAIL_STORE:";
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
@@ -48,6 +49,8 @@ public class UserService {
     private final EmailOTPForEmailChangeRandomConverter emailOTPForEmailChangeRandomConverter;
     private final EmailStoreStaticConverter emailStoreStaticConverter;
     private final EmailStoreRandomConverter emailStoreRandomConverter;
+    private final EmailOTPForEmailChangeForOldEmailStaticConverter emailOTPForEmailChangeForOldEmailStaticConverter;
+    private final EmailOTPForEmailChangeForOldEmailRandomConverter emailOTPForEmailChangeForOldEmailRandomConverter;
 
     public ResponseEntity<Map<String, Object>> register(RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.REGISTRATION_ENABLED.name())) {
@@ -322,6 +325,7 @@ public class UserService {
                 throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
             storeNewEmailForEmailChange(user, newEmail);
             mailService.sendOtpAsync(newEmail, "OTP for email change", generateOTPForEmailChange(user));
+            mailService.sendOtpAsync(user.getEmail(), "OTP for email change for old email", generateOTPForEmailChangeForOldEmail(user));
             return Map.of("message", "OTP sent to your new email. Please check your email to verify your email change");
         }
         throw new BadRequestException("Email change is currently disabled. Please try again later");
@@ -344,5 +348,15 @@ public class UserService {
 
     public String getEncryptedEmailChangeOTPKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return emailOTPForEmailChangeStaticConverter.encrypt(EMAIL_CHANGE_OTP_PREFIX + user.getId());
+    }
+
+    public String generateOTPForEmailChangeForOldEmail(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var otp = OTPUtility.generateOtp();
+        redisService.save(getEncryptedEmailChangeForOldEmailOTPKey(user), emailOTPForEmailChangeForOldEmailRandomConverter.encrypt(otp), RedisService.DEFAULT_TTL);
+        return otp;
+    }
+
+    public String getEncryptedEmailChangeForOldEmailOTPKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return emailOTPForEmailChangeForOldEmailStaticConverter.encrypt(EMAIL_CHANGE_OTP_FOR_OLD_EMAIL_PREFIX + user.getId());
     }
 }

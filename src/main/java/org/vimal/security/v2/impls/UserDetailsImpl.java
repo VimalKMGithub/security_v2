@@ -9,6 +9,7 @@ import org.vimal.security.v2.models.UserModel;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -74,5 +75,25 @@ public class UserDetailsImpl implements UserDetails {
 
     public String getEmail() {
         return userModel.getEmail();
+    }
+
+    public String getRealEmail() {
+        return userModel.getRealEmail();
+    }
+
+    public UUID getId() {
+        return userModel.getId();
+    }
+
+    public String getFirstName() {
+        return userModel.getFirstName();
+    }
+
+    public String getMiddleName() {
+        return userModel.getMiddleName();
+    }
+
+    public String getLastName() {
+        return userModel.getLastName();
     }
 }

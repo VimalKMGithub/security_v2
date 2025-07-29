@@ -89,6 +89,7 @@ public class JWTUtility {
         USER_ID,
         USERNAME,
         EMAIL,
+        REAL_EMAIL,
         AUTHORITIES,
         MFA_ENABLED,
         MFA_METHODS,
@@ -102,6 +103,7 @@ public class JWTUtility {
         claims.put(AccessTokenClaims.USER_ID.name(), user.getId());
         claims.put(AccessTokenClaims.USERNAME.name(), user.getUsername());
         claims.put(AccessTokenClaims.EMAIL.name(), user.getEmail());
+        claims.put(AccessTokenClaims.REAL_EMAIL.name(), user.getRealEmail());
         claims.put(AccessTokenClaims.AUTHORITIES.name(), user.getRoles().stream()
                 .flatMap(role ->
                         Stream.concat(
@@ -207,6 +209,7 @@ public class JWTUtility {
         tokenUser.setId(UUID.fromString(userId));
         tokenUser.setUsername(claims.get(AccessTokenClaims.USERNAME.name(), String.class));
         tokenUser.setEmail(claims.get(AccessTokenClaims.EMAIL.name(), String.class));
+        tokenUser.setRealEmail(claims.get(AccessTokenClaims.REAL_EMAIL.name(), String.class));
         tokenUser.setMfaEnabled(claims.get(AccessTokenClaims.MFA_ENABLED.name(), Boolean.class));
         tokenUser.setEnabledMfaMethods(((List<String>) claims.get(AccessTokenClaims.MFA_METHODS.name(), List.class)).stream().map(UserModel.MfaType::valueOf).collect(Collectors.toSet()));
         return new UserDetailsImpl(tokenUser, ((List<String>) claims.get(AccessTokenClaims.AUTHORITIES.name(), List.class)).stream().map(SimpleGrantedAuthority::new).collect(Collectors.toSet()));

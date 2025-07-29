@@ -396,8 +396,7 @@ public class UserService {
             user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
             user.setEmail(newEmail);
             user.setRealEmail(sanitizedEmail);
-            jwtUtility.revokeAccessToken(user);
-            jwtUtility.revokeRefreshToken(user);
+            jwtUtility.revokeTokens(user);
             try {
                 redisService.delete(Set.of(encryptedEmailChangeOTPKey, encryptedEmailChangeForOldEmailOTPKey, encryptedEmailKey));
             } catch (Exception ignored) {

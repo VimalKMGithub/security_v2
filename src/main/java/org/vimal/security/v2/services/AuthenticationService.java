@@ -184,13 +184,17 @@ public class AuthenticationService {
     }
 
     public Map<String, String> sendEmailOTPToEnableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new BadRequestException("Email MFA is disabled globally");
+        checkMFAAndEmailMFAEnabledGlobally();
         var user = UserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) throw new BadRequestException("Email MFA is already enabled");
         mailService.sendOtpAsync(user.getEmail(), "OTP to enable email MFA", generateOTPForEmailMFA(user));
         return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+    }
+
+    public void checkMFAAndEmailMFAEnabledGlobally() {
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+            throw new BadRequestException("Email MFA is disabled globally");
     }
 
     public String generateOTPForEmailMFA(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -204,9 +208,7 @@ public class AuthenticationService {
     }
 
     public Map<String, String> verifyEmailOTPToEnableEmailMFA(String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new BadRequestException("Email MFA is disabled globally");
+        checkMFAAndEmailMFAEnabledGlobally();
         try {
             ValidationUtility.validateOTP(otp, "OTP");
         } catch (BadRequestException ex) {
@@ -317,9 +319,7 @@ public class AuthenticationService {
     }
 
     public Map<String, String> sendEmailOTPToDisableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new BadRequestException("Email MFA is disabled globally");
+        checkMFAAndEmailMFAEnabledGlobally();
         var user = UserUtility.getCurrentAuthenticatedUser();
         if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL))
             throw new BadRequestException("Email MFA is already disabled");
@@ -329,9 +329,7 @@ public class AuthenticationService {
 
     public Map<String, String> verifyEmailOTPToDisableEmailMFA(String otp,
                                                                String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new BadRequestException("Email MFA is disabled globally");
+        checkMFAAndEmailMFAEnabledGlobally();
         try {
             ValidationUtility.validateOTP(otp, "OTP");
             ValidationUtility.validatePassword(password);
@@ -353,13 +351,17 @@ public class AuthenticationService {
     }
 
     public byte[] generateQRCodeForAuthenticatorApp() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, WriterException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
-            throw new BadRequestException("Authenticator app MFA is disabled globally");
+        checkMFAAndAuthenticatorAppMFAEnabledGlobally();
         var user = UserUtility.getCurrentAuthenticatedUser();
         if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
             throw new BadRequestException("Authenticator app MFA is already enabled");
         return QRUtility.generateQRCode(TOTPUtility.generateTOTPUrl("God Level Security", user.getUsername(), generateAuthenticatorAppSecret(user)));
+    }
+
+    public void checkMFAAndAuthenticatorAppMFAEnabledGlobally() {
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
+        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+            throw new BadRequestException("Authenticator app MFA is disabled globally");
     }
 
     public String generateAuthenticatorAppSecret(UserModel user) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -373,9 +375,7 @@ public class AuthenticationService {
     }
 
     public Map<String, String> verifyTOTPToSetupAuthenticatorApp(String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
-            throw new BadRequestException("Authenticator app MFA is disabled globally");
+        checkMFAAndAuthenticatorAppMFAEnabledGlobally();
         try {
             ValidationUtility.validateOTP(totp, "TOTP");
         } catch (BadRequestException ex) {
@@ -415,9 +415,7 @@ public class AuthenticationService {
 
     public Map<String, Object> verifyTOTPToLogin(String totp,
                                                  String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
-            throw new BadRequestException("Authenticator app MFA is disabled globally");
+        checkMFAAndAuthenticatorAppMFAEnabledGlobally();
         try {
             ValidationUtility.validateOTP(totp, "TOTP");
             ValidationUtility.validateUuid(stateToken, "State token");
@@ -443,9 +441,7 @@ public class AuthenticationService {
 
     public Map<String, String> verifyTOTPToDisableAuthenticatorAppMFA(String totp,
                                                                       String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name())) throw new BadRequestException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
-            throw new BadRequestException("Authenticator app MFA is disabled globally");
+        checkMFAAndAuthenticatorAppMFAEnabledGlobally();
         try {
             ValidationUtility.validateOTP(totp, "TOTP");
             ValidationUtility.validatePassword(password);

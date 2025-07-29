@@ -13,6 +13,7 @@ import org.vimal.security.v2.dtos.ResetPwdUsingOldPwdDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
+import org.vimal.security.v2.exceptions.ServiceUnavailableException;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.UserRepo;
 import org.vimal.security.v2.utils.*;
@@ -75,7 +76,7 @@ public class UserService {
             }
             return ResponseEntity.ok(Map.of("message", "Registration successful", "user", userRepo.save(user)));
         }
-        throw new BadRequestException("Registration is currently disabled. Please try again later");
+        throw new ServiceUnavailableException("Registration is currently disabled. Please try again later");
     }
 
     public UserModel toUserModel(RegistrationDto dto, String sanitizedEmail) {
@@ -160,7 +161,7 @@ public class UserService {
             mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration using username", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
             return Map.of("message", "Email verification link resent successfully. Please check your email");
         }
-        throw new BadRequestException("Resending email verification link is currently disabled. Please try again later");
+        throw new ServiceUnavailableException("Resending email verification link is currently disabled. Please try again later");
     }
 
     public Map<String, String> resendEmailVerificationLinkEmail(String email) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -175,7 +176,7 @@ public class UserService {
             mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration using email", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
             return Map.of("message", "Email verification link resent successfully. Please check your email");
         }
-        throw new BadRequestException("Resending email verification link is currently disabled. Please try again later");
+        throw new ServiceUnavailableException("Resending email verification link is currently disabled. Please try again later");
     }
 
     public Map<String, String> resendEmailVerificationLink(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -191,7 +192,7 @@ public class UserService {
                 return resendEmailVerificationLinkEmail(usernameOrEmail);
             else throw new BadRequestException("Invalid username/email");
         }
-        throw new BadRequestException("Resending email verification link is currently disabled. Please try again later");
+        throw new ServiceUnavailableException("Resending email verification link is currently disabled. Please try again later");
     }
 
     public Map<String, String> forgotPasswordUsername(String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -330,7 +331,7 @@ public class UserService {
             mailService.sendOtpAsync(user.getEmail(), "OTP for email change for old email", generateOTPForEmailChangeForOldEmail(user));
             return Map.of("message", "OTP sent to your new email. Please check your email to verify your email change");
         }
-        throw new BadRequestException("Email change is currently disabled. Please try again later");
+        throw new ServiceUnavailableException("Email change is currently disabled. Please try again later");
     }
 
     public void storeNewEmailForEmailChange(UserModel user,
@@ -403,6 +404,6 @@ public class UserService {
             }
             return Map.of("message", "Email change successful. Please login again to continue", "user", MapperUtility.toUserSummaryDto(userRepo.save(user)));
         }
-        throw new BadRequestException("Email change is currently disabled. Please try again later");
+        throw new ServiceUnavailableException("Email change is currently disabled. Please try again later");
     }
 }

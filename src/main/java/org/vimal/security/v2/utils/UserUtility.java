@@ -1,9 +1,11 @@
 package org.vimal.security.v2.utils;
 
+import io.getunleash.Unleash;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.enums.SystemRoles;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
@@ -65,5 +67,32 @@ public class UserUtility {
 
     public static String getUserHighestTopRole(Authentication authentication) {
         return getUserHighestTopRole(authentication.getAuthorities());
+    }
+
+    public static boolean shouldDoMFAForCurrentAuthenticatedUser(Unleash unleash) {
+        return shouldDoMFA(getAuthenticationOfCurrentAuthenticatedUser(), unleash);
+    }
+
+    public static boolean shouldDoMFA(Authentication authentication,
+                                      Unleash unleash) {
+        return shouldDoMFA(getUserDetails(authentication), unleash);
+    }
+
+    public static boolean shouldDoMFA(UserDetailsImpl userDetails,
+                                      Unleash unleash) {
+        return shouldDoMFA(userDetails.getUserModel(), unleash);
+    }
+
+    public static boolean shouldDoMFA(UserModel user,
+                                      Unleash unleash) {
+        var shouldDoMFA = false;
+        if (user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
+            var unleashEmailMFA = unleash.isEnabled(FeatureFlags.MFA_EMAIL.name());
+            var unleashAuthenticatorAppMFA = unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name());
+            if (unleashEmailMFA && user.hasMfaEnabled(UserModel.MfaType.EMAIL)) shouldDoMFA = true;
+            else if (unleashAuthenticatorAppMFA && user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                shouldDoMFA = true;
+        }
+        return shouldDoMFA;
     }
 }

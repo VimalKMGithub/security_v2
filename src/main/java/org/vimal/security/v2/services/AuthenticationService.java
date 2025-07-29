@@ -77,16 +77,8 @@ public class AuthenticationService {
     public Map<String, Object> handleSuccessfulLogin(Authentication authentication) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = ((UserDetailsImpl) authentication.getPrincipal()).getUserModel();
         if (unleash.isEnabled(FeatureFlags.MFA.name())) {
-            if (user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
-                var shouldDoMFA = false;
-                var unleashEmailMFA = unleash.isEnabled(FeatureFlags.MFA_EMAIL.name());
-                var unleashAuthenticatorAppMFA = unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name());
-                if (unleashEmailMFA && user.hasMfaEnabled(UserModel.MfaType.EMAIL)) shouldDoMFA = true;
-                else if (unleashAuthenticatorAppMFA && user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
-                    shouldDoMFA = true;
-                if (shouldDoMFA)
-                    return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", user.getEnabledMfaMethods());
-            }
+            if (UserUtility.shouldDoMFA(user, unleash))
+                return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", user.getEnabledMfaMethods());
             if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name()))
                 return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", Set.of(UserModel.MfaType.EMAIL));
         }

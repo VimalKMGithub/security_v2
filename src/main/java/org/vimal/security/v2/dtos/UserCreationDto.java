@@ -12,4 +12,5 @@ public class UserCreationDto extends RegistrationDto {
     private boolean emailVerified;
     private boolean accountLocked;
     private boolean accountEnabled;
+    private boolean accountDeleted;
 }

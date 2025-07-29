@@ -78,9 +78,14 @@ public class UserModel {
     @Column(name = "account_deleted_at")
     private Instant accountDeletedAt;
 
-    public void recordAccountDeletion() {
+    @JsonIgnore
+    @Column(name = "deleted_by", length = 100)
+    private String deletedBy;
+
+    public void recordAccountDeletion(String deletedBy) {
         this.accountDeleted = true;
         this.accountDeletedAt = Instant.now();
+        this.deletedBy = deletedBy;
     }
 
     @Builder.Default

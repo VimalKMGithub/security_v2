@@ -85,7 +85,7 @@ public class UserController {
     }
 
     @PostMapping("/reset/password/using/oldPassword")
-    public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(@RequestBody ResetPwdUsingOldPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(@RequestBody ResetPwdUsingOldPwdDto dto) {
         return userService.resetPasswordUsingOldPassword(dto);
     }
 }

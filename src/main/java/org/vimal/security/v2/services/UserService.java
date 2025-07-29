@@ -290,5 +290,19 @@ public class UserService {
             invalidInputs.add("Invalid old password");
         }
         if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        var user = UserUtility.getCurrentAuthenticatedUser();
+        if (unleash.isEnabled(FeatureFlags.MFA.name())) {
+            if (UserUtility.shouldDoMFA(user, unleash))
+                return ResponseEntity.badRequest().body(Map.of("message", "Since MFA is enabled in your account you cannot change password using old password only", "mfa_methods", user.getEnabledMfaMethods()));
+            if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name()))
+                return ResponseEntity.badRequest().body(Map.of("message", "Since MFA is forced globally you cannot change password using old password only", "mfa_methods", Set.of(UserModel.MfaType.EMAIL)));
+        }
+        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+        if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))
+            throw new BadRequestException("Invalid old password");
+        user.changePassword(passwordEncoder.encode(dto.getPassword()));
+        user.setUpdatedBy("SELF");
+        userRepo.save(user);
+        return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
 }

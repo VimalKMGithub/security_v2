@@ -7,7 +7,7 @@ import java.util.Collection;
 
 @Getter
 @Setter
-public class UserCreationDto extends RegistrationDto {
+public class UserCreationUpdationDto extends RegistrationDto {
     private Collection<String> roles;
     private boolean emailVerified;
     private boolean accountLocked;

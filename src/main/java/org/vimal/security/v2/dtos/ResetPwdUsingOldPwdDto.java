@@ -6,5 +6,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ResetPwdUsingOldPwdDto extends ResetPwdDto {
-    private String oldPassword;
+    public String oldPassword;
 }

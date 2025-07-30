@@ -25,7 +25,7 @@ public class TOTPUtility {
         return String.format("otpauth://totp/%s:%s?secret=%s&issuer=%s&algorithm=SHA1&digits=6&period=30", urlEncode(issuer), urlEncode(accountName), base32Secret, urlEncode(issuer));
     }
 
-    public static String urlEncode(String value) {
+    private static String urlEncode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
@@ -38,7 +38,7 @@ public class TOTPUtility {
         return generateTOTP(base32Secret).equals(userInputCode);
     }
 
-    public static SecretKey decodeBase32Secret(String base32Secret) {
+    private static SecretKey decodeBase32Secret(String base32Secret) {
         return new SecretKeySpec(new Base32().decode(base32Secret), totp.getAlgorithm());
     }
 }

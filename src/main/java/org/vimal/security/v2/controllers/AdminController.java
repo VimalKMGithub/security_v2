@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.vimal.security.v2.dtos.UserCreationUpdationDto;
 import org.vimal.security.v2.services.AdminService;
 
+import java.util.Collection;
 import java.util.Map;
 
 @RestController
@@ -22,5 +23,11 @@ public class AdminController {
     @PreAuthorize("@PreAuth.isAdminOrAbove() or @PreAuth.canCreateUsers()")
     public ResponseEntity<Map<String, Object>> createUser(@RequestBody UserCreationUpdationDto dto) {
         return adminService.createUser(dto);
+    }
+
+    @PostMapping("/create/users")
+    @PreAuthorize("@PreAuth.isAdminOrAbove() or @PreAuth.canCreateUsers()")
+    public ResponseEntity<Map<String, Object>> createUsers(@RequestBody Collection<UserCreationUpdationDto> dtos) {
+        return adminService.createUsers(dtos);
     }
 }

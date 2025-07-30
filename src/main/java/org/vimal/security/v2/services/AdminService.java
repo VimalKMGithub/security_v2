@@ -1,5 +1,6 @@
 package org.vimal.security.v2.services;
 
+import io.getunleash.Unleash;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +23,7 @@ public class AdminService {
     private final UserRepo userRepo;
     private final RoleRepo roleRepo;
     private final PasswordEncoder passwordEncoder;
+    private final Unleash unleash;
 
     public ResponseEntity<Map<String, Object>> createUser(UserCreationUpdationDto dto) {
         return createUsers(Set.of(dto));

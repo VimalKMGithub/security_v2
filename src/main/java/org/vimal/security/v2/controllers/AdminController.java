@@ -4,9 +4,11 @@ import io.getunleash.Unleash;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.vimal.security.v2.dtos.UserCreationUpdationDto;
-import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.services.AdminService;
 
 import java.util.Collection;
@@ -42,20 +44,4 @@ public class AdminController {
 //    public ResponseEntity<Map<String, Object>> deleteUsers(@RequestBody Collection<String> usernamesOrEmails) {
 //        return adminService.deleteUsers(usernamesOrEmails);
 //    }
-
-    @GetMapping("/test")
-    public Map<String, Object> test() {
-        var is = unleash.isEnabled(FeatureFlags.ALLOW_CREATE_USERS.name());
-        var variant = unleash.getVariant(FeatureFlags.ALLOW_CREATE_USERS.name());
-
-        var payload = variant.getPayload();
-//        var value = payload.orElse(null);
-        payload.ifPresent(value -> System.out.println(value.getValue()));
-        return Map.of(
-                "isEnabled", variant.isEnabled(),
-                "variant", variant,
-                "payload", payload
-//                "value", value
-        );
-    }
 }

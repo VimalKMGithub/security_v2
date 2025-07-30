@@ -41,9 +41,8 @@ public class AdminService {
     public ResponseEntity<Map<String, Object>> createUsers(Collection<UserCreationUpdationDto> dtos) {
         var creator = UserUtility.getCurrentAuthenticatedUserDetails();
         var creatorHighestTopRole = UserUtility.getUserHighestTopRole(creator);
-        var isTopRole = SystemRoles.TOP_ROLES.getFirst().equals(creatorHighestTopRole);
-        if (unleash.isEnabled(FeatureFlags.ALLOW_CREATE_USERS.name()) || isTopRole) {
-            if (!isTopRole && !unleash.isEnabled(FeatureFlags.ALLOW_CREATE_USERS_BY_USERS_HAVE_PERMISSION_TO_CREATE_USERS.name()))
+        if (unleash.isEnabled(FeatureFlags.ALLOW_CREATE_USERS.name()) || SystemRoles.TOP_ROLES.getFirst().equals(creatorHighestTopRole)) {
+            if (!SystemRoles.TOP_ROLES.contains(creatorHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_CREATE_USERS_BY_USERS_HAVE_PERMISSION_TO_CREATE_USERS.name()))
                 throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
             if (dtos.isEmpty()) throw new BadRequestException("No users to create");
             if (dtos.size() > MAX_USERS_TO_CREATE_AT_A_TIME)

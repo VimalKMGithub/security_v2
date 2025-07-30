@@ -1,6 +1,5 @@
 package org.vimal.security.v2.controllers;
 
-import io.getunleash.Unleash;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,7 +15,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AdminController {
     private final AdminService adminService;
-    private final Unleash unleash;
 
     @PostMapping("/create/user")
     @PreAuthorize("@PreAuth.isAdminOrAbove() or @PreAuth.canCreateUsers()")

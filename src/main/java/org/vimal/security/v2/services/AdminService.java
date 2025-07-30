@@ -81,7 +81,7 @@ public class AdminService {
                 mapOfErrors.put("duplicate_usernames_in_request", duplicateUsernamesInDtos);
             if (!duplicateEmailsInDtos.isEmpty())
                 mapOfErrors.put("duplicate_emails_in_request", duplicateEmailsInDtos);
-            var notAllowedToAssignRoles = validateRoles(roles, creatorHighestTopRole);
+            var notAllowedToAssignRoles = validateRolesRestriction(roles, creatorHighestTopRole);
             if (!notAllowedToAssignRoles.isEmpty())
                 mapOfErrors.put("not_allowed_to_assign_roles", notAllowedToAssignRoles);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
@@ -106,7 +106,8 @@ public class AdminService {
         throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
     }
 
-    public Collection<String> validateRoles(Collection<String> roles, String assignerTopRole) {
+    public Collection<String> validateRolesRestriction(Collection<String> roles,
+                                                       String assignerTopRole) {
         var restrictedRoles = new HashSet<String>();
         if (SystemRoles.TOP_ROLES.getFirst().equals(assignerTopRole) || Objects.isNull(roles) || roles.isEmpty())
             return restrictedRoles;
@@ -180,7 +181,41 @@ public class AdminService {
             });
             var mapOfErrors = new HashMap<String, Object>();
             if (!invalidInputs.isEmpty()) mapOfErrors.put("invalid_inputs", invalidInputs);
-            if (usernames.contains(user.getUsername()))
+            var ownAccountFoundWithUsernameOrEmail = new HashSet<String>();
+            if (usernames.contains(user.getUsername())) ownAccountFoundWithUsernameOrEmail.add(user.getUsername());
+            if (emails.contains(user.getEmail())) ownAccountFoundWithUsernameOrEmail.add(user.getEmail());
+            if (!ownAccountFoundWithUsernameOrEmail.isEmpty())
+                mapOfErrors.put("you_cannot_delete_your_own_account_using_this_endpoint", ownAccountFoundWithUsernameOrEmail);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            var foundByUsernames = userRepo.findByUsernameIn(usernames);
+            var foundByEmails = userRepo.findByEmailIn(emails);
+            var usersToDelete = new HashSet<UserModel>();
+            var rolesOfUsers = new HashSet<String>();
+            foundByUsernames.forEach(userToDelete -> {
+                usernames.remove(userToDelete.getUsername());
+                if (userToDelete.isAccountDeleted()) return;
+                if (!userToDelete.getRoles().isEmpty())
+                    userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
+                userToDelete.recordAccountDeletion(user.getUsername());
+                usersToDelete.add(userToDelete);
+            });
+            foundByEmails.forEach(userToDelete -> {
+                emails.remove(userToDelete.getEmail());
+                if (userToDelete.isAccountDeleted()) return;
+                if (!userToDelete.getRoles().isEmpty())
+                    userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
+                userToDelete.recordAccountDeletion(user.getUsername());
+                usersToDelete.add(userToDelete);
+            });
+            if (!usernames.isEmpty()) mapOfErrors.put("users_not_found_with_usernames", usernames);
+            if (!emails.isEmpty()) mapOfErrors.put("users_not_found_with_emails", emails);
+            var notAllowedToDeleteUsersWithRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);
+            if (!notAllowedToDeleteUsersWithRoles.isEmpty())
+                mapOfErrors.put("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            if (usersToDelete.isEmpty()) return ResponseEntity.ok(Map.of("message", "No users to delete"));
+            return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
         }
+        throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
     }
 }

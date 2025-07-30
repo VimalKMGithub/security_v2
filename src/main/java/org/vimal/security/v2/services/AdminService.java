@@ -170,7 +170,17 @@ public class AdminService {
             } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME)
                 throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME + " users at a time");
             var invalidInputs = new HashSet<String>();
-            var duplicateUsernamesOrEmailsInDtos = new HashSet<String>();
+            var emails = new HashSet<String>();
+            var usernames = new HashSet<String>();
+            usernamesOrEmails.forEach(identifier -> {
+                if (Objects.isNull(identifier)) return;
+                if (ValidationUtility.USERNAME_PATTERN.matcher(identifier).matches()) usernames.add(identifier);
+                else if (ValidationUtility.EMAIL_PATTERN.matcher(identifier).matches()) emails.add(identifier);
+                else invalidInputs.add(identifier);
+            });
+            var mapOfErrors = new HashMap<String, Object>();
+            if (!invalidInputs.isEmpty()) mapOfErrors.put("invalid_inputs", invalidInputs);
+            if (usernames.contains(user.getUsername()))
         }
     }
 }

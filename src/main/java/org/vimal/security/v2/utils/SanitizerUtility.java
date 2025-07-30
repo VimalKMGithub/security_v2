@@ -4,8 +4,8 @@ import java.util.Collection;
 import java.util.Set;
 
 public class SanitizerUtility {
-    public static final Collection<String> REMOVE_DOTS = Set.of("gmail.com", "googlemail.com");
-    public static final Collection<String> REMOVE_ALIAS_PART = Set.of("gmail.com", "googlemail.com", "live.com", "protonmail.com", "hotmail.com", "outlook.com");
+    private static final Collection<String> REMOVE_DOTS = Set.of("gmail.com", "googlemail.com");
+    private static final Collection<String> REMOVE_ALIAS_PART = Set.of("gmail.com", "googlemail.com", "live.com", "protonmail.com", "hotmail.com", "outlook.com");
 
     public static String sanitizeEmail(String email) {
         var lowerCasedEmail = email.trim().toLowerCase();

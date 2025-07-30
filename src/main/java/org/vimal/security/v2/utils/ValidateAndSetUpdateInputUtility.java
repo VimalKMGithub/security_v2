@@ -14,14 +14,7 @@ public class ValidateAndSetUpdateInputUtility {
                                                            UpdationDto dto,
                                                            UserRepo userRepo,
                                                            PasswordEncoder passwordEncoder) {
-        var userModificationResult = new UserModificationResultDto(false, false, new HashSet<>());
-        try {
-            ValidationUtility.validatePassword(dto.getOldPassword());
-            if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))
-                userModificationResult.getInvalidInputs().add("Invalid old password");
-        } catch (BadRequestException ex) {
-            userModificationResult.getInvalidInputs().add("Invalid old password");
-        }
+        var userModificationResult = validateOldPassword(user, dto, passwordEncoder);
         if (dto.getFirstName() != null && !dto.getFirstName().isBlank() && !dto.getFirstName().equals(user.getFirstName())) {
             try {
                 ValidationUtility.validateFirstName(dto.getFirstName());
@@ -62,6 +55,20 @@ public class ValidateAndSetUpdateInputUtility {
             } catch (BadRequestException ex) {
                 userModificationResult.getInvalidInputs().add(ex.getMessage());
             }
+        }
+        return userModificationResult;
+    }
+
+    public static UserModificationResultDto validateOldPassword(UserModel user,
+                                                                UpdationDto dto,
+                                                                PasswordEncoder passwordEncoder) {
+        var userModificationResult = new UserModificationResultDto(false, false, new HashSet<>());
+        try {
+            ValidationUtility.validatePassword(dto.getOldPassword());
+            if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))
+                userModificationResult.getInvalidInputs().add("Invalid old password");
+        } catch (BadRequestException ex) {
+            userModificationResult.getInvalidInputs().add("Invalid old password");
         }
         return userModificationResult;
     }

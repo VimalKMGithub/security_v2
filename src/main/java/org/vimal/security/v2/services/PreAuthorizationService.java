@@ -10,49 +10,47 @@ import java.util.Set;
 
 @Service("PreAuth")
 public class PreAuthorizationService {
-    public boolean isAdminOrAbove() {
-        return hasAnyAuthority(SystemRoles.TOP_ROLES.toArray(new String[0]));
+    private static final String[] TOP_ROLES_ARRAY = SystemRoles.TOP_ROLES.toArray(new String[0]);
+
+    public boolean isInTopRoles() {
+        return hasAnyAuthority(TOP_ROLES_ARRAY);
     }
 
     public boolean canCreateUsers() {
-        return hasAuthority(SystemPermissions.CAN_CREATE_USER.name());
+        return hasAnyAuthority(addPermissionToRolesArray(TOP_ROLES_ARRAY, SystemPermissions.CAN_CREATE_USER.name()));
     }
 
-    public boolean canReadUsers() {
-        return hasAuthority(SystemPermissions.CAN_READ_USER.name());
-    }
-
-    public boolean canUpdateUsers() {
-        return hasAuthority(SystemPermissions.CAN_UPDATE_USER.name());
-    }
-
-    public boolean canDeleteUsers() {
-        return hasAuthority(SystemPermissions.CAN_DELETE_USER.name());
-    }
-
-    public boolean canReadPermissions() {
-        return hasAuthority(SystemPermissions.CAN_READ_PERMISSION.name());
-    }
-
-    public boolean canCreateRoles() {
-        return hasAuthority(SystemPermissions.CAN_CREATE_ROLE.name());
-    }
-
-    public boolean canReadRoles() {
-        return hasAuthority(SystemPermissions.CAN_READ_ROLE.name());
-    }
-
-    public boolean canUpdateRoles() {
-        return hasAuthority(SystemPermissions.CAN_UPDATE_ROLE.name());
-    }
-
-    public boolean canDeleteRoles() {
-        return hasAuthority(SystemPermissions.CAN_DELETE_ROLE.name());
-    }
-
-    public boolean hasAuthority(String authority) {
-        return hasAnyAuthority(authority);
-    }
+//    public boolean canReadUsers() {
+//        return hasAuthority(SystemPermissions.CAN_READ_USER.name());
+//    }
+//
+//    public boolean canUpdateUsers() {
+//        return hasAuthority(SystemPermissions.CAN_UPDATE_USER.name());
+//    }
+//
+//    public boolean canDeleteUsers() {
+//        return hasAuthority(SystemPermissions.CAN_DELETE_USER.name());
+//    }
+//
+//    public boolean canReadPermissions() {
+//        return hasAuthority(SystemPermissions.CAN_READ_PERMISSION.name());
+//    }
+//
+//    public boolean canCreateRoles() {
+//        return hasAuthority(SystemPermissions.CAN_CREATE_ROLE.name());
+//    }
+//
+//    public boolean canReadRoles() {
+//        return hasAuthority(SystemPermissions.CAN_READ_ROLE.name());
+//    }
+//
+//    public boolean canUpdateRoles() {
+//        return hasAuthority(SystemPermissions.CAN_UPDATE_ROLE.name());
+//    }
+//
+//    public boolean canDeleteRoles() {
+//        return hasAuthority(SystemPermissions.CAN_DELETE_ROLE.name());
+//    }
 
     public boolean hasAnyAuthority(String... authorities) {
         var requiredRoles = Set.of(authorities);

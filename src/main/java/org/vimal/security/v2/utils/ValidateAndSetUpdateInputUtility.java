@@ -15,47 +15,10 @@ public class ValidateAndSetUpdateInputUtility {
                                                            UserRepo userRepo,
                                                            PasswordEncoder passwordEncoder) {
         var userModificationResult = validateOldPassword(user, dto, passwordEncoder);
-        if (dto.getFirstName() != null && !dto.getFirstName().isBlank() && !dto.getFirstName().equals(user.getFirstName())) {
-            try {
-                ValidationUtility.validateFirstName(dto.getFirstName());
-                user.setFirstName(dto.getFirstName());
-                userModificationResult.setModified(true);
-            } catch (BadRequestException ex) {
-                userModificationResult.getInvalidInputs().add(ex.getMessage());
-            }
-        }
-        if (dto.getMiddleName() != null && !dto.getMiddleName().isBlank() && !dto.getMiddleName().equals(user.getMiddleName())) {
-            try {
-                ValidationUtility.validateMiddleName(dto.getMiddleName());
-                user.setMiddleName(dto.getMiddleName());
-                userModificationResult.setModified(true);
-            } catch (BadRequestException ex) {
-                userModificationResult.getInvalidInputs().add(ex.getMessage());
-            }
-        }
-        if (dto.getLastName() != null && !dto.getLastName().isBlank() && !dto.getLastName().equals(user.getLastName())) {
-            try {
-                ValidationUtility.validateLastName(dto.getLastName());
-                user.setLastName(dto.getLastName());
-                userModificationResult.setModified(true);
-            } catch (BadRequestException ex) {
-                userModificationResult.getInvalidInputs().add(ex.getMessage());
-            }
-        }
-        if (dto.getUsername() != null && !dto.getUsername().isBlank() && !dto.getUsername().equals(user.getUsername())) {
-            try {
-                ValidationUtility.validateUsername(dto.getUsername());
-                if (userRepo.existsByUsername(dto.getUsername()))
-                    userModificationResult.getInvalidInputs().add("Username already taken");
-                else {
-                    user.setUsername(dto.getUsername());
-                    userModificationResult.setModified(true);
-                    userModificationResult.setShouldRemoveTokens(true);
-                }
-            } catch (BadRequestException ex) {
-                userModificationResult.getInvalidInputs().add(ex.getMessage());
-            }
-        }
+        validateAndSetFirstName(user, dto.getFirstName(), userModificationResult);
+        validateAndSetMiddleName(user, dto.getMiddleName(), userModificationResult);
+        validateAndSetLastName(user, dto.getLastName(), userModificationResult);
+        validateAndSetUsername(user, dto.getUsername(), userRepo, userModificationResult);
         return userModificationResult;
     }
 
@@ -71,5 +34,67 @@ public class ValidateAndSetUpdateInputUtility {
             userModificationResult.getInvalidInputs().add("Invalid old password");
         }
         return userModificationResult;
+    }
+
+    public static void validateAndSetFirstName(UserModel user,
+                                               String firstName,
+                                               UserModificationResultDto userModificationResult) {
+        if (firstName != null && !firstName.isBlank() && !firstName.equals(user.getFirstName())) {
+            try {
+                ValidationUtility.validateFirstName(firstName);
+                user.setFirstName(firstName);
+                userModificationResult.setModified(true);
+            } catch (BadRequestException ex) {
+                userModificationResult.getInvalidInputs().add(ex.getMessage());
+            }
+        }
+    }
+
+    public static void validateAndSetMiddleName(UserModel user,
+                                                String middleName,
+                                                UserModificationResultDto userModificationResult) {
+        if (middleName != null && !middleName.isBlank() && !middleName.equals(user.getMiddleName())) {
+            try {
+                ValidationUtility.validateMiddleName(middleName);
+                user.setMiddleName(middleName);
+                userModificationResult.setModified(true);
+            } catch (BadRequestException ex) {
+                userModificationResult.getInvalidInputs().add(ex.getMessage());
+            }
+        }
+    }
+
+    public static void validateAndSetLastName(UserModel user,
+                                              String lastName,
+                                              UserModificationResultDto userModificationResult) {
+        if (lastName != null && !lastName.isBlank() && !lastName.equals(user.getLastName())) {
+            try {
+                ValidationUtility.validateLastName(lastName);
+                user.setLastName(lastName);
+                userModificationResult.setModified(true);
+            } catch (BadRequestException ex) {
+                userModificationResult.getInvalidInputs().add(ex.getMessage());
+            }
+        }
+    }
+
+    public static void validateAndSetUsername(UserModel user,
+                                              String username,
+                                              UserRepo userRepo,
+                                              UserModificationResultDto userModificationResult) {
+        if (username != null && !username.isBlank() && !username.equals(user.getUsername())) {
+            try {
+                ValidationUtility.validateUsername(username);
+                if (userRepo.existsByUsername(username)) {
+                    userModificationResult.getInvalidInputs().add("Username already taken");
+                } else {
+                    user.setUsername(username);
+                    userModificationResult.setModified(true);
+                    userModificationResult.setShouldRemoveTokens(true);
+                }
+            } catch (BadRequestException ex) {
+                userModificationResult.getInvalidInputs().add(ex.getMessage());
+            }
+        }
     }
 }

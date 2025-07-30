@@ -23,8 +23,8 @@ public class MapperUtility {
         return dto;
     }
 
-    public static void mapCommonFields(UserModel user,
-                                       UserSummaryDto dto) {
+    private static void mapCommonFields(UserModel user,
+                                        UserSummaryDto dto) {
         dto.setId(user.getId());
         dto.setFirstName(user.getFirstName());
         dto.setMiddleName(user.getMiddleName());

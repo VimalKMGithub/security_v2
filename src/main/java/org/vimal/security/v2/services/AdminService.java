@@ -8,9 +8,11 @@ import org.vimal.security.v2.dtos.ResolvedRolesResultDto;
 import org.vimal.security.v2.dtos.UserCreationUpdationDto;
 import org.vimal.security.v2.enums.SystemRoles;
 import org.vimal.security.v2.models.RoleModel;
+import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.RoleRepo;
 import org.vimal.security.v2.repos.UserRepo;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -26,6 +28,12 @@ public class AdminService {
     }
 
     public ResponseEntity<Map<String, Object>> createUsers(Collection<UserCreationUpdationDto> dtos) {
+        var invalidInputs = new HashSet<String>();
+        var roles = new HashSet<String>();
+        var duplicateUsernamesInDtos = new HashSet<String>();
+        var duplicateEmailsInDtos = new HashSet<String>();
+        var usernames = new HashSet<String>();
+        var emails = new HashSet<String>();
     }
 
     public Collection<String> validateRolesAssignment(Collection<String> roles, String currentUserHighestTopRole) {
@@ -46,5 +54,29 @@ public class AdminService {
         var foundRoles = roleRepo.findAllById(roles);
         var foundRoleNames = foundRoles.stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
         return new ResolvedRolesResultDto(foundRoles, roles.stream().filter(role -> !foundRoleNames.contains(role)).collect(Collectors.toSet()));
+    }
+
+    public UserModel toUserModel(UserCreationUpdationDto dto,
+                                 Collection<RoleModel> roles,
+                                 UserModel creator) {
+        return UserModel.builder()
+                .username(dto.getUsername())
+                .email(dto.getEmail())
+                .realEmail(dto.getEmail())
+                .password(passwordEncoder.encode(dto.getPassword()))
+                .firstName(dto.getFirstName())
+                .middleName(dto.getMiddleName())
+                .lastName(dto.getLastName())
+                .roles(roles)
+                .emailVerified(dto.isEmailVerified())
+                .accountEnabled(dto.isAccountEnabled())
+                .accountLocked(dto.isAccountLocked())
+                .lastLockedAt(dto.isAccountLocked() ? Instant.now() : null)
+                .createdBy(creator.getUsername())
+                .updatedBy(creator.getUsername())
+                .accountDeleted(dto.isAccountDeleted())
+                .accountDeletedAt(dto.isAccountDeleted() ? Instant.now() : null)
+                .deletedBy(creator.getUsername())
+                .build();
     }
 }

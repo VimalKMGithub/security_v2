@@ -150,21 +150,27 @@ public class AdminService {
                 .build();
     }
 
-//    public ResponseEntity<Map<String, Object>> deleteUser(String usernameOrEmail) {
-//        return deleteUsers(Set.of(usernameOrEmail));
-//    }
-//
-//    public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) {
-//        var user = UserUtility.getCurrentAuthenticatedUserDetails();
-//        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
-//        if (unleash.isEnabled(FeatureFlags.ALLOW_DELETE_USERS.name()) || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
-//            if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_DELETE_USERS_BY_USERS_HAVE_PERMISSION_TO_DELETE_USERS.name()))
-//                throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
-//            if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to delete");
-//            if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME)
-//                throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME + " users at a time");
-//            var invalidInputs = new HashSet<String>();
-//            var duplicateUsernamesOrEmailsInDtos = new HashSet<String>();
-//        }
-//    }
+    public ResponseEntity<Map<String, Object>> deleteUser(String usernameOrEmail) {
+        return deleteUsers(Set.of(usernameOrEmail));
+    }
+
+    public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) {
+        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+        var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_USERS.name());
+        if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
+            if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_DELETE_USERS_BY_USERS_HAVE_PERMISSION_TO_DELETE_USERS.name()))
+                throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
+            if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to delete");
+            if (variant.isEnabled() && variant.getPayload().isPresent()) {
+                var maxUsersToDeleteAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+                if (maxUsersToDeleteAtATime < 1) maxUsersToDeleteAtATime = DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME;
+                if (usernamesOrEmails.size() > maxUsersToDeleteAtATime)
+                    throw new BadRequestException("Cannot delete more than " + maxUsersToDeleteAtATime + " users at a time");
+            } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME)
+                throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME + " users at a time");
+            var invalidInputs = new HashSet<String>();
+            var duplicateUsernamesOrEmailsInDtos = new HashSet<String>();
+        }
+    }
 }

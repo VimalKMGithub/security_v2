@@ -28,7 +28,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AdminService {
-    private static final int MAX_USERS_TO_CREATE_AT_A_TIME = 100;
+    private static final int DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME = 100;
+    private static final int DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME = 100;
     private final UserRepo userRepo;
     private final RoleRepo roleRepo;
     private final PasswordEncoder passwordEncoder;
@@ -41,12 +42,18 @@ public class AdminService {
     public ResponseEntity<Map<String, Object>> createUsers(Collection<UserCreationUpdationDto> dtos) {
         var creator = UserUtility.getCurrentAuthenticatedUserDetails();
         var creatorHighestTopRole = UserUtility.getUserHighestTopRole(creator);
-        if (unleash.isEnabled(FeatureFlags.ALLOW_CREATE_USERS.name()) || SystemRoles.TOP_ROLES.getFirst().equals(creatorHighestTopRole)) {
+        var variant = unleash.getVariant(FeatureFlags.ALLOW_CREATE_USERS.name());
+        if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(creatorHighestTopRole)) {
             if (Objects.isNull(creatorHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_CREATE_USERS_BY_USERS_HAVE_PERMISSION_TO_CREATE_USERS.name()))
                 throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
             if (dtos.isEmpty()) throw new BadRequestException("No users to create");
-            if (dtos.size() > MAX_USERS_TO_CREATE_AT_A_TIME)
-                throw new BadRequestException("Cannot create more than " + MAX_USERS_TO_CREATE_AT_A_TIME + " users at a time");
+            if (variant.isEnabled() && variant.getPayload().isPresent()) {
+                var maxUsersToCreateAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+                if (maxUsersToCreateAtATime < 1) maxUsersToCreateAtATime = DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME;
+                if (dtos.size() > maxUsersToCreateAtATime)
+                    throw new BadRequestException("Cannot create more than " + maxUsersToCreateAtATime + " users at a time");
+            } else if (dtos.size() > DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME)
+                throw new BadRequestException("Cannot create more than " + DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME + " users at a time");
             var invalidInputs = new HashSet<String>();
             var roles = new HashSet<String>();
             var duplicateUsernamesInDtos = new HashSet<String>();
@@ -143,10 +150,21 @@ public class AdminService {
                 .build();
     }
 
-    public ResponseEntity<Map<String, Object>> deleteUser(String usernameOrEmail) {
-        return deleteUsers(Set.of(usernameOrEmail));
-    }
-
-    public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) {
-    }
+//    public ResponseEntity<Map<String, Object>> deleteUser(String usernameOrEmail) {
+//        return deleteUsers(Set.of(usernameOrEmail));
+//    }
+//
+//    public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) {
+//        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+//        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+//        if (unleash.isEnabled(FeatureFlags.ALLOW_DELETE_USERS.name()) || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
+//            if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_DELETE_USERS_BY_USERS_HAVE_PERMISSION_TO_DELETE_USERS.name()))
+//                throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
+//            if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to delete");
+//            if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME)
+//                throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME + " users at a time");
+//            var invalidInputs = new HashSet<String>();
+//            var duplicateUsernamesOrEmailsInDtos = new HashSet<String>();
+//        }
+//    }
 }

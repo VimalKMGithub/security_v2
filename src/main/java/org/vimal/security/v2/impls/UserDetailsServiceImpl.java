@@ -25,7 +25,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         return new UserDetailsImpl(user);
     }
 
-    public void checkAccountStatus(UserModel user) {
+    private void checkAccountStatus(UserModel user) {
         if (user.isAccountDeleted()) throw new UsernameNotFoundException("Invalid credentials");
         if (!user.isEmailVerified()) throw new MailNotVerifiedException("Please verify your email first");
         if (user.isAccountLocked() && user.getLastLockedAt().plus(1, ChronoUnit.DAYS).isAfter(Instant.now()))

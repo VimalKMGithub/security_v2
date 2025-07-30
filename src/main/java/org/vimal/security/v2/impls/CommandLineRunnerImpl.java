@@ -42,7 +42,7 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
         log.info("System permissions, roles, and default users initialized successfully.");
     }
 
-    public void initializeSystemPermissionsIfAbsent() {
+    private void initializeSystemPermissionsIfAbsent() {
         var permissionNames = Arrays.stream(SystemPermissions.values()).map(SystemPermissions::name).collect(Collectors.toSet());
         var existingPermissions = permissionRepo.findAllById(permissionNames).stream().map(PermissionModel::getPermissionName).collect(Collectors.toSet());
         var missingPermissions = permissionNames.stream().filter(name -> !existingPermissions.contains(name)).collect(Collectors.toSet());
@@ -50,7 +50,7 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
         if (!permissionsToCreate.isEmpty()) permissionRepo.saveAll(permissionsToCreate);
     }
 
-    public void initializeSystemRolesIfAbsent() {
+    private void initializeSystemRolesIfAbsent() {
         var roleNames = Arrays.stream(SystemRoles.values()).map(SystemRoles::name).collect(Collectors.toSet());
         var existingRoles = roleRepo.findAllById(roleNames).stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
         var missingRoles = roleNames.stream().filter(name -> !existingRoles.contains(name)).collect(Collectors.toSet());
@@ -58,14 +58,14 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
         if (!rolesToCreate.isEmpty()) roleRepo.saveAll(rolesToCreate);
     }
 
-    public void assignPermissionsToRoles() {
+    private void assignPermissionsToRoles() {
         assignPermissionsToRole(SystemRoles.ROLE_MANAGE_ROLES.name(), Set.of(SystemPermissions.CAN_CREATE_ROLE.name(), SystemPermissions.CAN_READ_ROLE.name(), SystemPermissions.CAN_UPDATE_ROLE.name(), SystemPermissions.CAN_DELETE_ROLE.name()));
         assignPermissionsToRole(SystemRoles.ROLE_MANAGE_USERS.name(), Set.of(SystemPermissions.CAN_CREATE_USER.name(), SystemPermissions.CAN_READ_USER.name(), SystemPermissions.CAN_UPDATE_USER.name(), SystemPermissions.CAN_DELETE_USER.name()));
         assignPermissionsToRole(SystemRoles.ROLE_MANAGE_PERMISSIONS.name(), Set.of(SystemPermissions.CAN_READ_PERMISSION.name()));
     }
 
-    public void assignPermissionsToRole(String role,
-                                        Set<String> permissions) {
+    private void assignPermissionsToRole(String role,
+                                         Set<String> permissions) {
         var roleModel = roleRepo.findById(role).orElseThrow(() -> new RuntimeException("Role not found: " + role));
         var permissionModels = permissionRepo.findAllById(permissions);
         if (!permissionModels.isEmpty()) {
@@ -75,16 +75,16 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
         }
     }
 
-    public void initializeDefaultUsersIfAbsent() {
+    private void initializeDefaultUsersIfAbsent() {
         createUserIfNotExists(propertiesConfig.getGodUserEmail(), propertiesConfig.getGodUserUsername(), "God", propertiesConfig.getGodUserPassword(), Set.of(SystemRoles.ROLE_GOD.name()));
         createUserIfNotExists(propertiesConfig.getGlobalAdminUserEmail(), propertiesConfig.getGlobalAdminUserUsername(), "Global Admin", propertiesConfig.getGlobalAdminUserPassword(), Set.of(SystemRoles.ROLE_GLOBAL_ADMIN.name()));
     }
 
-    public void createUserIfNotExists(String email,
-                                      String username,
-                                      String firstName,
-                                      String password,
-                                      Set<String> roleNames) {
+    private void createUserIfNotExists(String email,
+                                       String username,
+                                       String firstName,
+                                       String password,
+                                       Set<String> roleNames) {
         if (!userRepo.existsByUsername(username)) {
             var user = UserModel.builder()
                     .email(email)

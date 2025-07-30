@@ -184,7 +184,7 @@ public class AdminService {
             var ownAccountFoundWithUsernameOrEmail = new HashSet<String>();
             if (usernames.contains(user.getUsername())) ownAccountFoundWithUsernameOrEmail.add(user.getUsername());
             if (emails.contains(user.getUserModel().getEmail()))
-                ownAccountFoundWithUsernameOrEmail.add(user.getEmail());
+                ownAccountFoundWithUsernameOrEmail.add(user.getUserModel().getEmail());
             if (!ownAccountFoundWithUsernameOrEmail.isEmpty())
                 mapOfErrors.put("you_cannot_delete_your_own_account_using_this_endpoint", ownAccountFoundWithUsernameOrEmail);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);

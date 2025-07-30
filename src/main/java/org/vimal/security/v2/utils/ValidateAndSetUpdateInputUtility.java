@@ -22,9 +22,9 @@ public class ValidateAndSetUpdateInputUtility {
         return userModificationResult;
     }
 
-    public static UserModificationResultDto validateOldPassword(UserModel user,
-                                                                UpdationDto dto,
-                                                                PasswordEncoder passwordEncoder) {
+    private static UserModificationResultDto validateOldPassword(UserModel user,
+                                                                 UpdationDto dto,
+                                                                 PasswordEncoder passwordEncoder) {
         var userModificationResult = new UserModificationResultDto(false, false, new HashSet<>());
         try {
             ValidationUtility.validatePassword(dto.getOldPassword());
@@ -36,9 +36,9 @@ public class ValidateAndSetUpdateInputUtility {
         return userModificationResult;
     }
 
-    public static void validateAndSetFirstName(UserModel user,
-                                               String firstName,
-                                               UserModificationResultDto userModificationResult) {
+    private static void validateAndSetFirstName(UserModel user,
+                                                String firstName,
+                                                UserModificationResultDto userModificationResult) {
         if (firstName != null && !firstName.isBlank() && !firstName.equals(user.getFirstName())) {
             try {
                 ValidationUtility.validateFirstName(firstName);
@@ -50,9 +50,9 @@ public class ValidateAndSetUpdateInputUtility {
         }
     }
 
-    public static void validateAndSetMiddleName(UserModel user,
-                                                String middleName,
-                                                UserModificationResultDto userModificationResult) {
+    private static void validateAndSetMiddleName(UserModel user,
+                                                 String middleName,
+                                                 UserModificationResultDto userModificationResult) {
         if (middleName != null && !middleName.isBlank() && !middleName.equals(user.getMiddleName())) {
             try {
                 ValidationUtility.validateMiddleName(middleName);
@@ -64,9 +64,9 @@ public class ValidateAndSetUpdateInputUtility {
         }
     }
 
-    public static void validateAndSetLastName(UserModel user,
-                                              String lastName,
-                                              UserModificationResultDto userModificationResult) {
+    private static void validateAndSetLastName(UserModel user,
+                                               String lastName,
+                                               UserModificationResultDto userModificationResult) {
         if (lastName != null && !lastName.isBlank() && !lastName.equals(user.getLastName())) {
             try {
                 ValidationUtility.validateLastName(lastName);
@@ -78,10 +78,10 @@ public class ValidateAndSetUpdateInputUtility {
         }
     }
 
-    public static void validateAndSetUsername(UserModel user,
-                                              String username,
-                                              UserRepo userRepo,
-                                              UserModificationResultDto userModificationResult) {
+    private static void validateAndSetUsername(UserModel user,
+                                               String username,
+                                               UserRepo userRepo,
+                                               UserModificationResultDto userModificationResult) {
         if (username != null && !username.isBlank() && !username.equals(user.getUsername())) {
             try {
                 ValidationUtility.validateUsername(username);

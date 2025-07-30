@@ -74,7 +74,7 @@ public class AdminService {
                 mapOfErrors.put("duplicate_usernames_in_request", duplicateUsernamesInDtos);
             if (!duplicateEmailsInDtos.isEmpty())
                 mapOfErrors.put("duplicate_emails_in_request", duplicateEmailsInDtos);
-            var notAllowedToAssignRoles = validateRolesAssignment(roles, creatorHighestTopRole);
+            var notAllowedToAssignRoles = validateRoles(roles, creatorHighestTopRole);
             if (!notAllowedToAssignRoles.isEmpty())
                 mapOfErrors.put("not_allowed_to_assign_roles", notAllowedToAssignRoles);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
@@ -99,16 +99,16 @@ public class AdminService {
         throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
     }
 
-    public Collection<String> validateRolesAssignment(Collection<String> roles, String assignerTopRole) {
-        var notAllowedToAssignRoles = new HashSet<String>();
+    public Collection<String> validateRoles(Collection<String> roles, String assignerTopRole) {
+        var restrictedRoles = new HashSet<String>();
         if (SystemRoles.TOP_ROLES.getFirst().equals(assignerTopRole) || Objects.isNull(roles) || roles.isEmpty())
-            return notAllowedToAssignRoles;
+            return restrictedRoles;
         for (var role : roles) {
             if (SystemRoles.TOP_ROLES.contains(role))
                 if (Objects.isNull(assignerTopRole) || SystemRoles.TOP_ROLES.indexOf(role) <= SystemRoles.TOP_ROLES.indexOf(assignerTopRole))
-                    notAllowedToAssignRoles.add(role);
+                    restrictedRoles.add(role);
         }
-        return notAllowedToAssignRoles;
+        return restrictedRoles;
     }
 
     public ResolvedRolesResultDto resolveRoles(Collection<String> roles) {
@@ -141,5 +141,12 @@ public class AdminService {
                 .accountDeletedAt(dto.isAccountDeleted() ? Instant.now() : null)
                 .deletedBy(dto.isAccountDeleted() ? creator.getUsername() : null)
                 .build();
+    }
+
+    public ResponseEntity<Map<String, Object>> deleteUser(String usernameOrEmail) {
+        return deleteUsers(Set.of(usernameOrEmail));
+    }
+
+    public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) {
     }
 }

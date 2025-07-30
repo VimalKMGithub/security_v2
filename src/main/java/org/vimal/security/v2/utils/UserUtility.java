@@ -26,15 +26,15 @@ public class UserUtility {
         return SecurityContextHolder.getContext().getAuthentication();
     }
 
-    public static boolean validateAuthentication(Authentication authentication) {
+    private static boolean validateAuthentication(Authentication authentication) {
         return Objects.nonNull(authentication) && authentication.isAuthenticated() && isPrincipalInstanceOfUserDetailsImpl(authentication);
     }
 
-    public static boolean isPrincipalInstanceOfUserDetailsImpl(Authentication authentication) {
+    private static boolean isPrincipalInstanceOfUserDetailsImpl(Authentication authentication) {
         return isInstanceOfUserDetailsImpl(authentication.getPrincipal());
     }
 
-    public static boolean isInstanceOfUserDetailsImpl(Object principal) {
+    private static boolean isInstanceOfUserDetailsImpl(Object principal) {
         return principal instanceof UserDetailsImpl;
     }
 
@@ -42,7 +42,7 @@ public class UserUtility {
         return getUserDetails(getAuthenticationOfCurrentAuthenticatedUser());
     }
 
-    public static UserDetailsImpl getUserDetails(Authentication authentication) {
+    private static UserDetailsImpl getUserDetails(Authentication authentication) {
         return (UserDetailsImpl) authentication.getPrincipal();
     }
 
@@ -50,11 +50,7 @@ public class UserUtility {
         return getCurrentAuthenticatedUserDetails().getUserModel();
     }
 
-    public static String getCurrentAuthenticatedUserHighestTopRole() {
-        return getUserHighestTopRole(getAuthenticationOfCurrentAuthenticatedUser().getAuthorities());
-    }
-
-    public static String getUserHighestTopRole(Collection<? extends GrantedAuthority> authorities) {
+    private static String getUserHighestTopRole(Collection<? extends GrantedAuthority> authorities) {
         return authorities.stream()
                 .map(GrantedAuthority::getAuthority)
                 .filter(SystemRoles.TOP_ROLES::contains)
@@ -64,24 +60,6 @@ public class UserUtility {
 
     public static String getUserHighestTopRole(UserDetailsImpl userDetails) {
         return getUserHighestTopRole(userDetails.getAuthorities());
-    }
-
-    public static String getUserHighestTopRole(Authentication authentication) {
-        return getUserHighestTopRole(authentication.getAuthorities());
-    }
-
-    public static boolean shouldDoMFAForCurrentAuthenticatedUser(Unleash unleash) {
-        return shouldDoMFA(getAuthenticationOfCurrentAuthenticatedUser(), unleash);
-    }
-
-    public static boolean shouldDoMFA(Authentication authentication,
-                                      Unleash unleash) {
-        return shouldDoMFA(getUserDetails(authentication), unleash);
-    }
-
-    public static boolean shouldDoMFA(UserDetailsImpl userDetails,
-                                      Unleash unleash) {
-        return shouldDoMFA(userDetails.getUserModel(), unleash);
     }
 
     public static boolean shouldDoMFA(UserModel user,

@@ -1,13 +1,26 @@
 package org.vimal.security.v2.controllers;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.vimal.security.v2.dtos.UserCreationUpdationDto;
 import org.vimal.security.v2.services.AdminService;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 public class AdminController {
     private final AdminService adminService;
+
+    @PostMapping("/create/user")
+    @PreAuthorize("@PreAuth.isAdminOrAbove() or @PreAuth.canCreateUsers()")
+    public ResponseEntity<Map<String, Object>> createUser(@RequestBody UserCreationUpdationDto dto) {
+        return adminService.createUser(dto);
+    }
 }

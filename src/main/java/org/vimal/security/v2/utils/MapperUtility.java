@@ -34,7 +34,7 @@ public class MapperUtility {
         dto.setCreatedBy(user.getCreatedBy());
         dto.setUpdatedBy(user.getUpdatedBy());
         dto.setRoles(user.getRoles().stream().map(RoleModel::getRoleName).collect(Collectors.toSet()));
-        dto.setMfaMethods(user.getEnabledMfaMethods().stream().map(UserModel.MfaType::name).collect(Collectors.toSet()));
+        dto.setMfaMethods(user.getEnabledMfaMethods() != null ? user.getEnabledMfaMethods().stream().map(UserModel.MfaType::name).collect(Collectors.toSet()) : null);
         dto.setLastLoginAt(user.getLastLoginAt());
         dto.setPasswordChangedAt(user.getPasswordChangedAt());
         dto.setCreatedAt(user.getCreatedAt());

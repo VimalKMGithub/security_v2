@@ -17,25 +17,25 @@ public class AdminController {
     private final AdminService adminService;
 
     @PostMapping("/create/user")
-    @PreAuthorize("@PreAuth.isAdminOrAbove() or @PreAuth.canCreateUsers()")
+    @PreAuthorize("@PreAuth.canCreateUsers()")
     public ResponseEntity<Map<String, Object>> createUser(@RequestBody UserCreationUpdationDto dto) {
         return adminService.createUser(dto);
     }
 
     @PostMapping("/create/users")
-    @PreAuthorize("@PreAuth.isAdminOrAbove() or @PreAuth.canCreateUsers()")
+    @PreAuthorize("@PreAuth.canCreateUsers()")
     public ResponseEntity<Map<String, Object>> createUsers(@RequestBody Collection<UserCreationUpdationDto> dtos) {
         return adminService.createUsers(dtos);
     }
 
     @DeleteMapping("/delete/user")
-    @PreAuthorize("@PreAuth.isAdminOrAbove() or @PreAuth.canDeleteUsers()")
+    @PreAuthorize("@PreAuth.canDeleteUsers()")
     public ResponseEntity<Map<String, Object>> deleteUser(@RequestParam String usernameOrEmail) {
         return adminService.deleteUser(usernameOrEmail);
     }
 
     @DeleteMapping("/delete/users")
-    @PreAuthorize("@PreAuth.isAdminOrAbove() or @PreAuth.canDeleteUsers()")
+    @PreAuthorize("@PreAuth.canDeleteUsers()")
     public ResponseEntity<Map<String, Object>> deleteUsers(@RequestBody Collection<String> usernamesOrEmails) {
         return adminService.deleteUsers(usernamesOrEmails);
     }

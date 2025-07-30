@@ -28,7 +28,7 @@ public class AESStaticUtility {
         return encryptString(objectMapper.writeValueAsString(data));
     }
 
-    public String encryptString(String data) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+    private String encryptString(String data) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         var cipher = Cipher.getInstance(TRANSFORMATION);
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, new IvParameterSpec(FIXED_IV));
         return Base64.getEncoder().encodeToString(cipher.doFinal(data.getBytes()));
@@ -39,7 +39,7 @@ public class AESStaticUtility {
         return objectMapper.readValue(decryptString(encryptedData), targetClass);
     }
 
-    public String decryptString(String encryptedData) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+    private String decryptString(String encryptedData) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         var cipher = Cipher.getInstance(TRANSFORMATION);
         cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(FIXED_IV));
         return new String(cipher.doFinal(Base64.getDecoder().decode(encryptedData)));

@@ -27,7 +27,7 @@ public class AESRandomUtility {
         return encryptString(objectMapper.writeValueAsString(data));
     }
 
-    public String encryptString(String data) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+    private String encryptString(String data) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         var iv = new byte[GCM_IV_LENGTH];
         secureRandom.nextBytes(iv);
         var cipher = Cipher.getInstance(TRANSFORMATION);
@@ -40,7 +40,7 @@ public class AESRandomUtility {
         return objectMapper.readValue(decryptString(encryptedData), targetClass);
     }
 
-    public String decryptString(String encryptedData) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+    private String decryptString(String encryptedData) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         var parts = encryptedData.split(":");
         var cipher = Cipher.getInstance(TRANSFORMATION);
         cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(GCM_TAG_LENGTH, Base64.getDecoder().decode(parts[0])));

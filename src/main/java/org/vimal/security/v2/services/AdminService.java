@@ -7,10 +7,12 @@ import org.springframework.stereotype.Service;
 import org.vimal.security.v2.dtos.ResolvedRolesResultDto;
 import org.vimal.security.v2.dtos.UserCreationUpdationDto;
 import org.vimal.security.v2.enums.SystemRoles;
+import org.vimal.security.v2.models.RoleModel;
 import org.vimal.security.v2.repos.RoleRepo;
 import org.vimal.security.v2.repos.UserRepo;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +44,7 @@ public class AdminService {
         if (Objects.isNull(roles) || roles.isEmpty())
             return new ResolvedRolesResultDto(new HashSet<>(), new HashSet<>());
         var foundRoles = roleRepo.findAllById(roles);
-        var foundRoleNames = foundRoles.stream()
+        var foundRoleNames = foundRoles.stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
+        return new ResolvedRolesResultDto(foundRoles, roles.stream().filter(role -> !foundRoleNames.contains(role)).collect(Collectors.toSet()));
     }
 }

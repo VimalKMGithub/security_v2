@@ -8,12 +8,12 @@ import java.util.regex.Pattern;
 public class ValidationUtility {
     public static final Pattern EMAIL_PATTERN = Pattern.compile("^(?=.{1,64}@)[\\p{L}0-9]+([._+-][\\p{L}0-9]+)*@([\\p{L}0-9]+(-[\\p{L}0-9]+)*\\.)+\\p{L}{2,190}$");
     public static final Pattern USERNAME_PATTERN = Pattern.compile("^[\\p{L}0-9_-]{3,100}$");
-    public static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,255}$");
-    public static final Pattern NAME_PATTERN = Pattern.compile("^[\\p{L} .'-]+$");
-    public static final Pattern ROLE_AND_PERMISSION_NAME_PATTERN = Pattern.compile("^[\\p{L}0-9_]+$");
-    public static final Pattern UUID_PATTERN = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$");
-    public static final Pattern NUMBER_ONLY_PATTERN = Pattern.compile("^[0-9]+$");
-    public static final int DEFAULT_OTP_LENGTH = 6;
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,255}$");
+    private static final Pattern NAME_PATTERN = Pattern.compile("^[\\p{L} .'-]+$");
+    private static final Pattern ROLE_AND_PERMISSION_NAME_PATTERN = Pattern.compile("^[\\p{L}0-9_]+$");
+    private static final Pattern UUID_PATTERN = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$");
+    private static final Pattern NUMBER_ONLY_PATTERN = Pattern.compile("^[0-9]+$");
+    private static final int DEFAULT_OTP_LENGTH = 6;
 
     public static void validateStringNonNullAndNotEmpty(String value,
                                                         String fieldName) {
@@ -21,34 +21,34 @@ public class ValidationUtility {
         if (value.isBlank()) throw new BadRequestException(fieldName + " cannot be blank");
     }
 
-    public static void validateStringExactLength(String value,
-                                                 String fieldName,
-                                                 int length) {
+    private static void validateStringExactLength(String value,
+                                                  String fieldName,
+                                                  int length) {
         validateStringNonNullAndNotEmpty(value, fieldName);
         if (value.length() != length)
             throw new BadRequestException(fieldName + " must be exactly " + length + " characters long");
     }
 
-    public static void validateStringMinLength(String value,
-                                               String fieldName,
-                                               int minLength) {
+    private static void validateStringMinLength(String value,
+                                                String fieldName,
+                                                int minLength) {
         validateStringNonNullAndNotEmpty(value, fieldName);
         if (value.length() < minLength)
             throw new BadRequestException(fieldName + " must be at least " + minLength + " characters long");
     }
 
-    public static void validateStringMaxLength(String value,
-                                               String fieldName,
-                                               int maxLength) {
+    private static void validateStringMaxLength(String value,
+                                                String fieldName,
+                                                int maxLength) {
         validateStringNonNullAndNotEmpty(value, fieldName);
         if (value.length() > maxLength)
             throw new BadRequestException(fieldName + " must be at most " + maxLength + " characters long");
     }
 
-    public static void validateStringLengthRange(String value,
-                                                 String fieldName,
-                                                 int minLength,
-                                                 int maxLength) {
+    private static void validateStringLengthRange(String value,
+                                                  String fieldName,
+                                                  int minLength,
+                                                  int maxLength) {
         validateStringNonNullAndNotEmpty(value, fieldName);
         validateStringMinLength(value, fieldName, minLength);
         validateStringMaxLength(value, fieldName, maxLength);
@@ -79,16 +79,16 @@ public class ValidationUtility {
             throw new BadRequestException(fieldName + ": '" + uuid + "' is of invalid format");
     }
 
-    public static void validateStringContainsOnlyNumbers(String value,
-                                                         String fieldName) {
+    private static void validateStringContainsOnlyNumbers(String value,
+                                                          String fieldName) {
         validateStringNonNullAndNotEmpty(value, fieldName);
         if (!NUMBER_ONLY_PATTERN.matcher(value).matches())
             throw new BadRequestException(fieldName + " can only contain numbers");
     }
 
-    public static void validateOTP(String otp,
-                                   String fieldName,
-                                   int exactLength) {
+    private static void validateOTP(String otp,
+                                    String fieldName,
+                                    int exactLength) {
         validateStringExactLength(otp, fieldName, exactLength);
         validateStringContainsOnlyNumbers(otp, fieldName);
     }

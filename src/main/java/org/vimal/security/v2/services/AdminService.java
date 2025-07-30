@@ -140,7 +140,7 @@ public class AdminService {
                 .updatedBy(creator.getUsername())
                 .accountDeleted(dto.isAccountDeleted())
                 .accountDeletedAt(dto.isAccountDeleted() ? Instant.now() : null)
-                .deletedBy(creator.getUsername())
+                .deletedBy(dto.isAccountDeleted() ? creator.getUsername() : null)
                 .build();
     }
 }

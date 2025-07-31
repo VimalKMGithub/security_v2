@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.vimal.security.v2.dtos.ResolvedRolesResultDto;
 import org.vimal.security.v2.dtos.UserCreationDto;
 import org.vimal.security.v2.dtos.UserDeletionResultDto;
+import org.vimal.security.v2.dtos.UserUpdationDto;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.enums.SystemRoles;
 import org.vimal.security.v2.exceptions.BadRequestException;
@@ -332,10 +333,10 @@ public class AdminService {
         throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
     }
 
-//    public ResponseEntity<Map<String, Object>> updateUser(UserUpdationDto dto) {
-//        return updateUsers(Set.of(dto));
-//    }
-//
-//    public ResponseEntity<Map<String, Object>> updateUsers(Collection<UserUpdationDto> dtos) {
-//    }
+    public ResponseEntity<Map<String, Object>> updateUser(UserUpdationDto dto) {
+        return updateUsers(Set.of(dto));
+    }
+
+    public ResponseEntity<Map<String, Object>> updateUsers(Collection<UserUpdationDto> dtos) {
+    }
 }

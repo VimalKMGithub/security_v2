@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.vimal.security.v2.dtos.UserCreationDto;
+import org.vimal.security.v2.dtos.UserUpdationDto;
 import org.vimal.security.v2.services.AdminService;
 
 import javax.crypto.BadPaddingException;
@@ -71,15 +72,15 @@ public class AdminController {
         return adminService.getUsers(usernamesOrEmails);
     }
 
-//    @PutMapping("/update/user")
-//    @PreAuthorize("@PreAuth.canUpdateUsers()")
-//    public ResponseEntity<Map<String, Object>> updateUser(@RequestBody UserUpdationDto dto) {
-//        return adminService.updateUser(dto);
-//    }
-//
-//    @PutMapping("/update/users")
-//    @PreAuthorize("@PreAuth.canUpdateUsers()")
-//    public ResponseEntity<Map<String, Object>> updateUsers(@RequestBody Set<UserUpdationDto> dtos) {
-//        return adminService.updateUsers(dtos);
-//    }
+    @PutMapping("/update/user")
+    @PreAuthorize("@PreAuth.canUpdateUsers()")
+    public ResponseEntity<Map<String, Object>> updateUser(@RequestBody UserUpdationDto dto) {
+        return adminService.updateUser(dto);
+    }
+
+    @PutMapping("/update/users")
+    @PreAuthorize("@PreAuth.canUpdateUsers()")
+    public ResponseEntity<Map<String, Object>> updateUsers(@RequestBody Set<UserUpdationDto> dtos) {
+        return adminService.updateUsers(dtos);
+    }
 }

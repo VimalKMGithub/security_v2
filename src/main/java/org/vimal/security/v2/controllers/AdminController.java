@@ -40,6 +40,18 @@ public class AdminController {
         return adminService.deleteUsers(usernamesOrEmails);
     }
 
+    @DeleteMapping("/delete/user/hard")
+    @PreAuthorize("@PreAuth.isTopTwoRoles()")
+    public ResponseEntity<Map<String, Object>> deleteUserHard(@RequestParam String usernameOrEmail) {
+        return adminService.deleteUserHard(usernameOrEmail);
+    }
+
+    @DeleteMapping("/delete/users/hard")
+    @PreAuthorize("@PreAuth.isTopTwoRoles()")
+    public ResponseEntity<Map<String, Object>> deleteUsersHard(@RequestBody Set<String> usernamesOrEmails) {
+        return adminService.deleteUsersHard(usernamesOrEmails);
+    }
+
     @GetMapping("/get/user")
     @PreAuthorize("@PreAuth.canReadUsers()")
     public ResponseEntity<Map<String, Object>> getUser(@RequestParam String usernameOrEmail) {

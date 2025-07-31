@@ -23,6 +23,7 @@ public class PreAuthorizationService {
     private static final Collection<String> CAN_READ_ROLES_COLLECTION = Stream.concat(TOP_ROLES_COLLECTION.stream(), Stream.of(SystemPermissions.CAN_READ_ROLE.name())).collect(Collectors.toUnmodifiableSet());
     private static final Collection<String> CAN_UPDATE_ROLES_COLLECTION = Stream.concat(TOP_ROLES_COLLECTION.stream(), Stream.of(SystemPermissions.CAN_UPDATE_ROLE.name())).collect(Collectors.toUnmodifiableSet());
     private static final Collection<String> CAN_DELETE_ROLES_COLLECTION = Stream.concat(TOP_ROLES_COLLECTION.stream(), Stream.of(SystemPermissions.CAN_DELETE_ROLE.name())).collect(Collectors.toUnmodifiableSet());
+    private static final Collection<String> TOP_TWO_ROLES_COLLECTION = Set.of(SystemRoles.TOP_ROLES.getFirst(), SystemRoles.TOP_ROLES.get(1));
 
     public boolean canCreateUsers() {
         return hasAnyAuthority(CAN_CREATE_USERS_COLLECTION);
@@ -58,6 +59,10 @@ public class PreAuthorizationService {
 
     public boolean canDeleteRoles() {
         return hasAnyAuthority(CAN_DELETE_ROLES_COLLECTION);
+    }
+
+    public boolean isTopTwoRoles() {
+        return hasAnyAuthority(TOP_TWO_ROLES_COLLECTION);
     }
 
     public boolean hasAnyAuthority(Collection<String> authorities) {

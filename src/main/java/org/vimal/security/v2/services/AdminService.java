@@ -223,6 +223,13 @@ public class AdminService {
         throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
     }
 
+    public ResponseEntity<Map<String, Object>> deleteUserHard(String usernameOrEmail) {
+        return deleteUsersHard(Set.of(usernameOrEmail));
+    }
+
+    public ResponseEntity<Map<String, Object>> deleteUsersHard(Collection<String> usernamesOrEmails) {
+    }
+
     public ResponseEntity<Map<String, Object>> getUser(String usernameOrEmail) {
         return getUsers(Set.of(usernameOrEmail));
     }

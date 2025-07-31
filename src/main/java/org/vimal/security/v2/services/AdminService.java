@@ -37,6 +37,7 @@ public class AdminService {
     private static final int DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME = 100;
     private static final int DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME = 100;
     private static final int DEFAULT_MAX_USERS_TO_READ_AT_A_TIME = 300;
+    private static final int DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME = 100;
     private final UserRepo userRepo;
     private final RoleRepo roleRepo;
     private final PasswordEncoder passwordEncoder;

@@ -24,7 +24,7 @@ public class RedisService {
         return redisTemplate.opsForValue().get(key);
     }
 
-    public Collection<Object> get(Collection<Object> keys) {
+    public Collection<Object> getAll(Collection<Object> keys) {
         return redisTemplate.opsForValue().multiGet(keys);
     }
 
@@ -32,7 +32,7 @@ public class RedisService {
         redisTemplate.delete(key);
     }
 
-    public void delete(Collection<Object> keys) {
+    public void deleteAll(Collection<Object> keys) {
         redisTemplate.delete(keys);
     }
 

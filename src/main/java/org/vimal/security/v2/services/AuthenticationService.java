@@ -98,7 +98,7 @@ public class AuthenticationService {
             redisService.save(encryptedStateTokenMappingKey, stateTokenRandomConverter.encrypt(user.getId()), RedisService.DEFAULT_TTL);
             return stateToken;
         } catch (Exception ex) {
-            redisService.delete(Set.of(encryptedStateTokenKey, encryptedStateTokenMappingKey));
+            redisService.deleteAll(Set.of(encryptedStateTokenKey, encryptedStateTokenMappingKey));
             throw new RuntimeException("Failed to generate state token", ex);
         }
     }
@@ -290,7 +290,7 @@ public class AuthenticationService {
             throw new BadRequestException("Email MFA is not enabled");
         verifyOTPToLogin(user, otp);
         try {
-            redisService.delete(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey));
+            redisService.deleteAll(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey));
         } catch (Exception ignored) {
         }
         return jwtUtility.generateTokens(user);
@@ -426,7 +426,7 @@ public class AuthenticationService {
             throw new BadRequestException("Invalid TOTP");
         }
         try {
-            redisService.delete(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey));
+            redisService.deleteAll(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey));
         } catch (Exception ignored) {
         }
         return jwtUtility.generateTokens(user);

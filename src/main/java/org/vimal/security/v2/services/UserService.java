@@ -106,7 +106,7 @@ public class UserService {
             redisService.save(encryptedEmailVerificationTokenMappingKey, emailVerificationTokenRandomConverter.encrypt(user.getId()), RedisService.DEFAULT_TTL);
             return emailVerificationToken;
         } catch (Exception ex) {
-            redisService.delete(Set.of(encryptedEmailVerificationTokenKey, encryptedEmailVerificationTokenMappingKey));
+            redisService.deleteAll(Set.of(encryptedEmailVerificationTokenKey, encryptedEmailVerificationTokenMappingKey));
             throw new RuntimeException("Failed to generate email verification token", ex);
         }
     }
@@ -132,7 +132,7 @@ public class UserService {
         user.setEmailVerified(true);
         user.setUpdatedBy("SELF");
         try {
-            redisService.delete(Set.of(getEncryptedEmailVerificationTokenKey(user), encryptedEmailVerificationTokenMappingKey));
+            redisService.deleteAll(Set.of(getEncryptedEmailVerificationTokenKey(user), encryptedEmailVerificationTokenMappingKey));
         } catch (Exception ignored) {
         }
         return Map.of("message", "Email verification successful", "user", MapperUtility.toUserSummaryDto(userRepo.save(user)));
@@ -402,7 +402,7 @@ public class UserService {
             user.setRealEmail(sanitizedEmail);
             jwtUtility.revokeTokens(user);
             try {
-                redisService.delete(Set.of(encryptedEmailChangeOTPKey, encryptedEmailChangeForOldEmailOTPKey, encryptedEmailKey));
+                redisService.deleteAll(Set.of(encryptedEmailChangeOTPKey, encryptedEmailChangeForOldEmailOTPKey, encryptedEmailKey));
             } catch (Exception ignored) {
             }
             return Map.of("message", "Email change successful. Please login again to continue", "user", MapperUtility.toUserSummaryDto(userRepo.save(user)));

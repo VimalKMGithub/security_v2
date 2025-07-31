@@ -1,5 +1,6 @@
 package org.vimal.security.v2.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.getunleash.Unleash;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,11 +16,14 @@ import org.vimal.security.v2.models.RoleModel;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.RoleRepo;
 import org.vimal.security.v2.repos.UserRepo;
-import org.vimal.security.v2.utils.InputValidationUtility;
-import org.vimal.security.v2.utils.MapperUtility;
-import org.vimal.security.v2.utils.UserUtility;
-import org.vimal.security.v2.utils.ValidationUtility;
+import org.vimal.security.v2.utils.*;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
@@ -35,6 +39,7 @@ public class AdminService {
     private final RoleRepo roleRepo;
     private final PasswordEncoder passwordEncoder;
     private final Unleash unleash;
+    private final JWTUtility jwtUtility;
 
     public ResponseEntity<Map<String, Object>> createUser(UserCreationUpdationDto dto) {
         return createUsers(Set.of(dto));
@@ -153,11 +158,11 @@ public class AdminService {
                 .build();
     }
 
-    public ResponseEntity<Map<String, Object>> deleteUser(String usernameOrEmail) {
+    public ResponseEntity<Map<String, Object>> deleteUser(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return deleteUsers(Set.of(usernameOrEmail));
     }
 
-    public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) {
+    public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_USERS.name());
@@ -217,6 +222,7 @@ public class AdminService {
                 mapOfErrors.put("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             if (usersToDelete.isEmpty()) return ResponseEntity.ok(Map.of("message", "No users to delete"));
+            jwtUtility.revokeTokens(usersToDelete);
             userRepo.saveAll(usersToDelete);
             return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
         }

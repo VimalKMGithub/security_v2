@@ -11,32 +11,32 @@ public class InputValidationUtility {
     public static Collection<String> validateInputs(RegistrationDto dto) {
         var validationErrors = new HashSet<String>();
         try {
-            ValidationUtility.validateUsername(dto.username);
+            ValidationUtility.validateUsername(dto.getUsername());
         } catch (BadRequestException ex) {
             validationErrors.add(ex.getMessage());
         }
         try {
-            ValidationUtility.validatePassword(dto.password);
+            ValidationUtility.validatePassword(dto.getPassword());
         } catch (BadRequestException ex) {
             validationErrors.add(ex.getMessage());
         }
         try {
-            ValidationUtility.validateEmail(dto.email);
+            ValidationUtility.validateEmail(dto.getEmail());
         } catch (BadRequestException ex) {
             validationErrors.add(ex.getMessage());
         }
         try {
-            ValidationUtility.validateFirstName(dto.firstName);
+            ValidationUtility.validateFirstName(dto.getFirstName());
         } catch (BadRequestException ex) {
             validationErrors.add(ex.getMessage());
         }
         try {
-            ValidationUtility.validateMiddleName(dto.middleName);
+            ValidationUtility.validateMiddleName(dto.getMiddleName());
         } catch (BadRequestException ex) {
             validationErrors.add(ex.getMessage());
         }
         try {
-            ValidationUtility.validateLastName(dto.lastName);
+            ValidationUtility.validateLastName(dto.getLastName());
         } catch (BadRequestException ex) {
             validationErrors.add(ex.getMessage());
         }
@@ -80,9 +80,9 @@ public class InputValidationUtility {
     public static Collection<String> validateInputsPasswordAndConfirmPassword(ResetPwdDto dto) {
         var validationErrors = new HashSet<String>();
         try {
-            ValidationUtility.validatePassword(dto.password);
-            if (!dto.password.equals(dto.confirmPassword))
-                validationErrors.add("New password: '" + dto.password + "' and confirm password: '" + dto.confirmPassword + "' do not match");
+            ValidationUtility.validatePassword(dto.getPassword());
+            if (!dto.getPassword().equals(dto.getConfirmPassword()))
+                validationErrors.add("New password: '" + dto.getPassword() + "' and confirm password: '" + dto.getConfirmPassword() + "' do not match");
         } catch (BadRequestException ex) {
             validationErrors.add("New " + ex.getMessage());
         }

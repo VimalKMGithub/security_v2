@@ -263,23 +263,28 @@ public class AdminService {
     public ResponseEntity<Map<String, Object>> deleteUsersHard(Collection<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
-        var deletionResult = deleteUsersResult(usernamesOrEmails, user, userHighestTopRole);
-        if (Objects.isNull(deletionResult.getMapOfErrors())) {
-            if (!deletionResult.getRolesOfSoftDeletedUsers().isEmpty()) {
-                var notAllowedToDeleteUsersWithRoles = validateRolesRestriction(deletionResult.getRolesOfSoftDeletedUsers(), userHighestTopRole);
-                if (!notAllowedToDeleteUsersWithRoles.isEmpty())
-                    return ResponseEntity.badRequest().body(Map.of("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles));
+        if (unleash.isEnabled(FeatureFlags.ALLOW_HARD_DELETE_USERS.name()) || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
+            if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_HARD_DELETE_USERS_BY_USERS_HAVE_PERMISSION_TO_DELETE_USERS.name()))
+                throw new ServiceUnavailableException("Hard deletion of users is currently disabled. Please try again later");
+            var deletionResult = deleteUsersResult(usernamesOrEmails, user, userHighestTopRole);
+            if (Objects.isNull(deletionResult.getMapOfErrors())) {
+                if (!deletionResult.getRolesOfSoftDeletedUsers().isEmpty()) {
+                    var notAllowedToDeleteUsersWithRoles = validateRolesRestriction(deletionResult.getRolesOfSoftDeletedUsers(), userHighestTopRole);
+                    if (!notAllowedToDeleteUsersWithRoles.isEmpty())
+                        return ResponseEntity.badRequest().body(Map.of("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles));
+                }
+                if (!deletionResult.getSoftDeletedUsers().isEmpty())
+                    deletionResult.getUsersToDelete().addAll(deletionResult.getSoftDeletedUsers());
+                if (!deletionResult.getUsersToDelete().isEmpty()) {
+                    jwtUtility.revokeTokens(deletionResult.getUsersToDelete());
+                    userRepo.deleteAll(deletionResult.getUsersToDelete());
+                    return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
+                }
+                return ResponseEntity.badRequest().body(Map.of("message", "No users to delete"));
             }
-            if (!deletionResult.getSoftDeletedUsers().isEmpty())
-                deletionResult.getUsersToDelete().addAll(deletionResult.getSoftDeletedUsers());
-            if (!deletionResult.getUsersToDelete().isEmpty()) {
-                jwtUtility.revokeTokens(deletionResult.getUsersToDelete());
-                userRepo.deleteAll(deletionResult.getUsersToDelete());
-                return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
-            }
-            return ResponseEntity.badRequest().body(Map.of("message", "No users to delete"));
+            return ResponseEntity.badRequest().body(deletionResult.getMapOfErrors());
         }
-        return ResponseEntity.badRequest().body(deletionResult.getMapOfErrors());
+        throw new ServiceUnavailableException("Hard deletion of users is currently disabled. Please try again later");
     }
 
     public ResponseEntity<Map<String, Object>> getUser(String usernameOrEmail) {

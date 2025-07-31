@@ -219,4 +219,14 @@ public class AdminService {
         }
         throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
     }
+
+    public ResponseEntity<Map<String, Object>> getUser(String usernameOrEmail) {
+        return getUsers(Set.of(usernameOrEmail));
+    }
+
+    public ResponseEntity<Map<String, Object>> getUsers(Collection<String> usernamesOrEmails) {
+        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+        throw new ServiceUnavailableException("Getting users is currently disabled. Please try again later");
+    }
 }

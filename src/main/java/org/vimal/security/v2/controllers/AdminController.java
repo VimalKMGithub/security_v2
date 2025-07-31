@@ -39,4 +39,16 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> deleteUsers(@RequestBody Collection<String> usernamesOrEmails) {
         return adminService.deleteUsers(usernamesOrEmails);
     }
+
+    @GetMapping("/get/user")
+    @PreAuthorize("@PreAuth.canReadUsers()")
+    public ResponseEntity<Map<String, Object>> getUser(@RequestParam String usernameOrEmail) {
+        return adminService.getUser(usernameOrEmail);
+    }
+
+    @GetMapping("/get/users")
+    @PreAuthorize("@PreAuth.canReadUsers()")
+    public ResponseEntity<Map<String, Object>> getUsers(@RequestBody Collection<String> usernamesOrEmails) {
+        return adminService.getUsers(usernamesOrEmails);
+    }
 }

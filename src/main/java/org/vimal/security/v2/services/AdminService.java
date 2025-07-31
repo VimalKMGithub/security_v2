@@ -13,6 +13,7 @@ import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.enums.SystemRoles;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.exceptions.ServiceUnavailableException;
+import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.RoleModel;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.RoleRepo;
@@ -164,7 +165,9 @@ public class AdminService {
     }
 
     public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var deletionResult = deleteUsersResult(usernamesOrEmails);
+        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+        var deletionResult = deleteUsersResult(usernamesOrEmails, user, userHighestTopRole);
         if (Objects.isNull(deletionResult.getMapOfErrors())) {
             if (!deletionResult.getUsersToDelete().isEmpty()) {
                 jwtUtility.revokeTokens(deletionResult.getUsersToDelete());
@@ -176,9 +179,9 @@ public class AdminService {
         return ResponseEntity.badRequest().body(deletionResult.getMapOfErrors());
     }
 
-    private UserDeletionResultDto deleteUsersResult(Collection<String> usernamesOrEmails) {
-        var user = UserUtility.getCurrentAuthenticatedUserDetails();
-        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+    private UserDeletionResultDto deleteUsersResult(Collection<String> usernamesOrEmails,
+                                                    UserDetailsImpl user,
+                                                    String userHighestTopRole) {
         var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_USERS.name());
         if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
             if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_DELETE_USERS_BY_USERS_HAVE_PERMISSION_TO_DELETE_USERS.name()))
@@ -208,16 +211,19 @@ public class AdminService {
                 ownAccountFoundWithUsernameOrEmail.add(user.getUserModel().getEmail());
             if (!ownAccountFoundWithUsernameOrEmail.isEmpty())
                 mapOfErrors.put("you_cannot_delete_your_own_account_using_this_endpoint", ownAccountFoundWithUsernameOrEmail);
-            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null);
+            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null, null);
             var foundByUsernames = userRepo.findByUsernameIn(usernames);
             var foundByEmails = userRepo.findByEmailIn(emails);
             var usersToDelete = new HashSet<UserModel>();
             var softDeletedUsers = new HashSet<UserModel>();
             var rolesOfUsers = new HashSet<String>();
+            var rolesOfSoftDeletedUsers = new HashSet<String>();
             foundByUsernames.forEach(userToDelete -> {
                 usernames.remove(userToDelete.getUsername());
                 if (userToDelete.isAccountDeleted()) {
                     softDeletedUsers.add(userToDelete);
+                    if (!userToDelete.getRoles().isEmpty())
+                        userToDelete.getRoles().forEach(role -> rolesOfSoftDeletedUsers.add(role.getRoleName()));
                     return;
                 }
                 if (!userToDelete.getRoles().isEmpty())
@@ -229,6 +235,8 @@ public class AdminService {
                 emails.remove(userToDelete.getEmail());
                 if (userToDelete.isAccountDeleted()) {
                     softDeletedUsers.add(userToDelete);
+                    if (!userToDelete.getRoles().isEmpty())
+                        userToDelete.getRoles().forEach(role -> rolesOfSoftDeletedUsers.add(role.getRoleName()));
                     return;
                 }
                 if (!userToDelete.getRoles().isEmpty())
@@ -241,8 +249,8 @@ public class AdminService {
             var notAllowedToDeleteUsersWithRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);
             if (!notAllowedToDeleteUsersWithRoles.isEmpty())
                 mapOfErrors.put("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles);
-            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null);
-            return new UserDeletionResultDto(null, usersToDelete, softDeletedUsers);
+            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null, null);
+            return new UserDeletionResultDto(null, usersToDelete, softDeletedUsers, rolesOfSoftDeletedUsers);
         }
         throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
     }
@@ -252,9 +260,17 @@ public class AdminService {
     }
 
     public ResponseEntity<Map<String, Object>> deleteUsersHard(Collection<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var deletionResult = deleteUsersResult(usernamesOrEmails);
+        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+        var deletionResult = deleteUsersResult(usernamesOrEmails, user, userHighestTopRole);
         if (Objects.isNull(deletionResult.getMapOfErrors())) {
-            deletionResult.getUsersToDelete().addAll(deletionResult.getSoftDeletedUsers());
+            if (!deletionResult.getRolesOfSoftDeletedUsers().isEmpty()) {
+                var notAllowedToDeleteUsersWithRoles = validateRolesRestriction(deletionResult.getRolesOfSoftDeletedUsers(), userHighestTopRole);
+                if (!notAllowedToDeleteUsersWithRoles.isEmpty())
+                    return ResponseEntity.badRequest().body(Map.of("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles));
+            }
+            if (!deletionResult.getSoftDeletedUsers().isEmpty())
+                deletionResult.getUsersToDelete().addAll(deletionResult.getSoftDeletedUsers());
             if (!deletionResult.getUsersToDelete().isEmpty()) {
                 jwtUtility.revokeTokens(deletionResult.getUsersToDelete());
                 userRepo.deleteAll(deletionResult.getUsersToDelete());

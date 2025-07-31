@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.vimal.security.v2.dtos.ResolvedRolesResultDto;
-import org.vimal.security.v2.dtos.UserCreationUpdationDto;
+import org.vimal.security.v2.dtos.UserCreationDto;
 import org.vimal.security.v2.dtos.UserDeletionResultDto;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.enums.SystemRoles;
@@ -43,11 +43,11 @@ public class AdminService {
     private final Unleash unleash;
     private final JWTUtility jwtUtility;
 
-    public ResponseEntity<Map<String, Object>> createUser(UserCreationUpdationDto dto) {
+    public ResponseEntity<Map<String, Object>> createUser(UserCreationDto dto) {
         return createUsers(Set.of(dto));
     }
 
-    public ResponseEntity<Map<String, Object>> createUsers(Collection<UserCreationUpdationDto> dtos) {
+    public ResponseEntity<Map<String, Object>> createUsers(Collection<UserCreationDto> dtos) {
         var creator = UserUtility.getCurrentAuthenticatedUserDetails();
         var creatorHighestTopRole = UserUtility.getUserHighestTopRole(creator);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_CREATE_USERS.name());
@@ -68,7 +68,7 @@ public class AdminService {
             var duplicateEmailsInDtos = new HashSet<String>();
             var usernames = new HashSet<String>();
             var emails = new HashSet<String>();
-            var nonNullDtos = new HashSet<UserCreationUpdationDto>();
+            var nonNullDtos = new HashSet<UserCreationDto>();
             dtos.forEach(dto -> {
                 if (Objects.isNull(dto)) return;
                 var invalidInputsForThisDto = InputValidationUtility.validateInputs(dto);
@@ -136,7 +136,7 @@ public class AdminService {
         return new ResolvedRolesResultDto(foundRoles, roles.stream().filter(role -> !foundRoleNames.contains(role)).collect(Collectors.toSet()));
     }
 
-    private UserModel toUserModel(UserCreationUpdationDto dto,
+    private UserModel toUserModel(UserCreationDto dto,
                                   Collection<RoleModel> roles,
                                   UserModel creator) {
         return UserModel.builder()

@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.vimal.security.v2.dtos.UserCreationUpdationDto;
+import org.vimal.security.v2.dtos.UserCreationDto;
 import org.vimal.security.v2.services.AdminService;
 
 import javax.crypto.BadPaddingException;
@@ -25,13 +25,13 @@ public class AdminController {
 
     @PostMapping("/create/user")
     @PreAuthorize("@PreAuth.canCreateUsers()")
-    public ResponseEntity<Map<String, Object>> createUser(@RequestBody UserCreationUpdationDto dto) {
+    public ResponseEntity<Map<String, Object>> createUser(@RequestBody UserCreationDto dto) {
         return adminService.createUser(dto);
     }
 
     @PostMapping("/create/users")
     @PreAuthorize("@PreAuth.canCreateUsers()")
-    public ResponseEntity<Map<String, Object>> createUsers(@RequestBody Set<UserCreationUpdationDto> dtos) {
+    public ResponseEntity<Map<String, Object>> createUsers(@RequestBody Set<UserCreationDto> dtos) {
         return adminService.createUsers(dtos);
     }
 

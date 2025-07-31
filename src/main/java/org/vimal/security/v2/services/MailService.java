@@ -57,7 +57,7 @@ public class MailService {
                                                  String subject) {
         var text = """
                 Your account has been deleted successfully & will be completely removed from backup after 30 days.
-                If this was a mistake or you want to recover your account or not done by you, please contact support immediately.
+                If this was a mistake or you want to recover your account or not done by you or if you want to remove your account from backup immediately, please contact support.
                 """;
         sendEmail(to, subject, text);
     }

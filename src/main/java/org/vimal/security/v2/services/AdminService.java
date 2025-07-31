@@ -236,12 +236,34 @@ public class AdminService {
                 throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
             if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to read");
             if (variant.isEnabled() && variant.getPayload().isPresent()) {
-                var maxUsersToDeleteAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
-                if (maxUsersToDeleteAtATime < 1) maxUsersToDeleteAtATime = DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME;
-                if (usernamesOrEmails.size() > maxUsersToDeleteAtATime)
-                    throw new BadRequestException("Cannot delete more than " + maxUsersToDeleteAtATime + " users at a time");
-            } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME)
-                throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME + " users at a time");
+                var maxUsersToReadAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+                if (maxUsersToReadAtATime < 1) maxUsersToReadAtATime = DEFAULT_MAX_USERS_TO_READ_AT_A_TIME;
+                if (usernamesOrEmails.size() > maxUsersToReadAtATime)
+                    throw new BadRequestException("Cannot delete more than " + maxUsersToReadAtATime + " users at a time");
+            } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_READ_AT_A_TIME)
+                throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_READ_AT_A_TIME + " users at a time");
+            var invalidInputs = new HashSet<String>();
+            var emails = new HashSet<String>();
+            var usernames = new HashSet<String>();
+            usernamesOrEmails.forEach(identifier -> {
+                if (Objects.isNull(identifier)) return;
+                if (ValidationUtility.USERNAME_PATTERN.matcher(identifier).matches()) usernames.add(identifier);
+                else if (ValidationUtility.EMAIL_PATTERN.matcher(identifier).matches()) emails.add(identifier);
+                else invalidInputs.add(identifier);
+            });
+            if (!invalidInputs.isEmpty()) ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+            var foundByUsernames = userRepo.findByUsernameIn(usernames);
+            var foundByEmails = userRepo.findByEmailIn(emails);
+            var foundByUsernamesUsernames = foundByUsernames.stream().map(UserModel::getUsername).collect(Collectors.toSet());
+            var foundByEmailsEmails = foundByEmails.stream().map(UserModel::getEmail).collect(Collectors.toSet());
+            usernames.removeAll(foundByUsernamesUsernames);
+            emails.removeAll(foundByEmailsEmails);
+            var mapOfErrors = new HashMap<String, Object>();
+            if (!usernames.isEmpty()) mapOfErrors.put("users_not_found_with_usernames", usernames);
+            if (!emails.isEmpty()) mapOfErrors.put("users_not_found_with_emails", emails);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            foundByUsernames.addAll(foundByEmails);
+            return ResponseEntity.ok(Map.of("message", "Users read successfully", "users", foundByUsernames.stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
         }
         throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
     }

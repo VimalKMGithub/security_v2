@@ -338,5 +338,21 @@ public class AdminService {
     }
 
     public ResponseEntity<Map<String, Object>> updateUsers(Collection<UserUpdationDto> dtos) {
+        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+        var variant = unleash.getVariant(FeatureFlags.ALLOW_UPDATE_USERS.name());
+        if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
+            if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_UPDATE_USERS_BY_USERS_HAVE_PERMISSION_TO_UPDATE_USERS.name()))
+                throw new ServiceUnavailableException("Updating users is currently disabled. Please try again later");
+            if (dtos.isEmpty()) throw new BadRequestException("No users to update");
+            if (variant.isEnabled() && variant.getPayload().isPresent()) {
+                var maxUsersToUpdateAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+                if (maxUsersToUpdateAtATime < 1) maxUsersToUpdateAtATime = DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME;
+                if (dtos.size() > maxUsersToUpdateAtATime)
+                    throw new BadRequestException("Cannot update more than " + maxUsersToUpdateAtATime + " users at a time");
+            } else if (dtos.size() > DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME)
+                throw new BadRequestException("Cannot update more than " + DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME + " users at a time");
+        }
+        throw new ServiceUnavailableException("Updating users is currently disabled. Please try again later");
     }
 }

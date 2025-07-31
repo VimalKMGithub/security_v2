@@ -16,4 +16,5 @@ import java.util.Map;
 public class UserDeletionResultDto {
     private Map<String, Object> mapOfErrors;
     private Collection<UserModel> usersToDelete;
+    private Collection<UserModel> softDeletedUsers;
 }

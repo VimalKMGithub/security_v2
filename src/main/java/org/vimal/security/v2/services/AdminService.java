@@ -166,9 +166,12 @@ public class AdminService {
     public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var deletionResult = deleteUsersResult(usernamesOrEmails);
         if (Objects.isNull(deletionResult.getMapOfErrors())) {
-            jwtUtility.revokeTokens(deletionResult.getUsersToDelete());
-            userRepo.saveAll(deletionResult.getUsersToDelete());
-            return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
+            if (!deletionResult.getUsersToDelete().isEmpty()) {
+                jwtUtility.revokeTokens(deletionResult.getUsersToDelete());
+                userRepo.saveAll(deletionResult.getUsersToDelete());
+                return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
+            }
+            return ResponseEntity.badRequest().body(Map.of("message", "No users to delete"));
         }
         return ResponseEntity.badRequest().body(deletionResult.getMapOfErrors());
     }
@@ -205,14 +208,18 @@ public class AdminService {
                 ownAccountFoundWithUsernameOrEmail.add(user.getUserModel().getEmail());
             if (!ownAccountFoundWithUsernameOrEmail.isEmpty())
                 mapOfErrors.put("you_cannot_delete_your_own_account_using_this_endpoint", ownAccountFoundWithUsernameOrEmail);
-            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null);
+            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null);
             var foundByUsernames = userRepo.findByUsernameIn(usernames);
             var foundByEmails = userRepo.findByEmailIn(emails);
             var usersToDelete = new HashSet<UserModel>();
+            var softDeletedUsers = new HashSet<UserModel>();
             var rolesOfUsers = new HashSet<String>();
             foundByUsernames.forEach(userToDelete -> {
                 usernames.remove(userToDelete.getUsername());
-                if (userToDelete.isAccountDeleted()) return;
+                if (userToDelete.isAccountDeleted()) {
+                    softDeletedUsers.add(userToDelete);
+                    return;
+                }
                 if (!userToDelete.getRoles().isEmpty())
                     userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
                 userToDelete.recordAccountDeletion(user.getUsername());
@@ -220,7 +227,10 @@ public class AdminService {
             });
             foundByEmails.forEach(userToDelete -> {
                 emails.remove(userToDelete.getEmail());
-                if (userToDelete.isAccountDeleted()) return;
+                if (userToDelete.isAccountDeleted()) {
+                    softDeletedUsers.add(userToDelete);
+                    return;
+                }
                 if (!userToDelete.getRoles().isEmpty())
                     userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
                 userToDelete.recordAccountDeletion(user.getUsername());
@@ -231,10 +241,8 @@ public class AdminService {
             var notAllowedToDeleteUsersWithRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);
             if (!notAllowedToDeleteUsersWithRoles.isEmpty())
                 mapOfErrors.put("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles);
-            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null);
-            if (usersToDelete.isEmpty())
-                return new UserDeletionResultDto(Map.of("message", "No users to delete"), null);
-            return new UserDeletionResultDto(null, usersToDelete);
+            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null);
+            return new UserDeletionResultDto(null, usersToDelete, softDeletedUsers);
         }
         throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
     }
@@ -246,9 +254,13 @@ public class AdminService {
     public ResponseEntity<Map<String, Object>> deleteUsersHard(Collection<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var deletionResult = deleteUsersResult(usernamesOrEmails);
         if (Objects.isNull(deletionResult.getMapOfErrors())) {
-            jwtUtility.revokeTokens(deletionResult.getUsersToDelete());
-            userRepo.deleteAll(deletionResult.getUsersToDelete());
-            return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
+            deletionResult.getUsersToDelete().addAll(deletionResult.getSoftDeletedUsers());
+            if (!deletionResult.getUsersToDelete().isEmpty()) {
+                jwtUtility.revokeTokens(deletionResult.getUsersToDelete());
+                userRepo.deleteAll(deletionResult.getUsersToDelete());
+                return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
+            }
+            return ResponseEntity.badRequest().body(Map.of("message", "No users to delete"));
         }
         return ResponseEntity.badRequest().body(deletionResult.getMapOfErrors());
     }

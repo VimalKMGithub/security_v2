@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.*;
 import org.vimal.security.v2.dtos.UserCreationUpdationDto;
 import org.vimal.security.v2.services.AdminService;
 
-import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -24,7 +24,7 @@ public class AdminController {
 
     @PostMapping("/create/users")
     @PreAuthorize("@PreAuth.canCreateUsers()")
-    public ResponseEntity<Map<String, Object>> createUsers(@RequestBody Collection<UserCreationUpdationDto> dtos) {
+    public ResponseEntity<Map<String, Object>> createUsers(@RequestBody Set<UserCreationUpdationDto> dtos) {
         return adminService.createUsers(dtos);
     }
 
@@ -36,7 +36,7 @@ public class AdminController {
 
     @DeleteMapping("/delete/users")
     @PreAuthorize("@PreAuth.canDeleteUsers()")
-    public ResponseEntity<Map<String, Object>> deleteUsers(@RequestBody Collection<String> usernamesOrEmails) {
+    public ResponseEntity<Map<String, Object>> deleteUsers(@RequestBody Set<String> usernamesOrEmails) {
         return adminService.deleteUsers(usernamesOrEmails);
     }
 
@@ -48,7 +48,7 @@ public class AdminController {
 
     @GetMapping("/get/users")
     @PreAuthorize("@PreAuth.canReadUsers()")
-    public ResponseEntity<Map<String, Object>> getUsers(@RequestBody Collection<String> usernamesOrEmails) {
+    public ResponseEntity<Map<String, Object>> getUsers(@RequestBody Set<String> usernamesOrEmails) {
         return adminService.getUsers(usernamesOrEmails);
     }
 }

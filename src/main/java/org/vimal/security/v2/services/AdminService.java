@@ -94,6 +94,7 @@ public class AdminService {
             if (!resolvedRolesResult.getMissingRoles().isEmpty())
                 mapOfErrors.put("missing_roles", resolvedRolesResult.getMissingRoles());
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            if (nonNullDtos.isEmpty()) return ResponseEntity.ok(Map.of("message", "No users to create"));
             var resolvedRolesMap = resolvedRolesResult.getRoles().stream().collect(Collectors.toMap(RoleModel::getRoleName, Function.identity()));
             var newUsers = nonNullDtos.stream().map(dto -> {
                         if (Objects.isNull(dto.getRoles()) || dto.getRoles().isEmpty())
@@ -216,6 +217,7 @@ public class AdminService {
                 mapOfErrors.put("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             if (usersToDelete.isEmpty()) return ResponseEntity.ok(Map.of("message", "No users to delete"));
+            userRepo.saveAll(usersToDelete);
             return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
         }
         throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
@@ -228,6 +230,19 @@ public class AdminService {
     public ResponseEntity<Map<String, Object>> getUsers(Collection<String> usernamesOrEmails) {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
-        throw new ServiceUnavailableException("Getting users is currently disabled. Please try again later");
+        var variant = unleash.getVariant(FeatureFlags.ALLOW_READ_USERS.name());
+        if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
+            if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_READ_USERS_BY_USERS_HAVE_PERMISSION_TO_READ_USERS.name()))
+                throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
+            if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to read");
+            if (variant.isEnabled() && variant.getPayload().isPresent()) {
+                var maxUsersToDeleteAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+                if (maxUsersToDeleteAtATime < 1) maxUsersToDeleteAtATime = DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME;
+                if (usernamesOrEmails.size() > maxUsersToDeleteAtATime)
+                    throw new BadRequestException("Cannot delete more than " + maxUsersToDeleteAtATime + " users at a time");
+            } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME)
+                throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME + " users at a time");
+        }
+        throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
     }
 }

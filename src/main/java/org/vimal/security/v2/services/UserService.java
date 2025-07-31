@@ -61,13 +61,13 @@ public class UserService {
             var invalidInputs = InputValidationUtility.validateInputs(dto);
             if (!invalidInputs.isEmpty())
                 return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
-            if (userRepo.existsByUsername(dto.username))
-                throw new BadRequestException("Username: '" + dto.username + "' is already taken");
-            if (userRepo.existsByEmail(dto.email))
-                throw new BadRequestException("Email: '" + dto.email + "' is already registered");
-            var sanitizedEmail = SanitizerUtility.sanitizeEmail(dto.email);
+            if (userRepo.existsByUsername(dto.getUsername()))
+                throw new BadRequestException("Username: '" + dto.getUsername() + "' is already taken");
+            if (userRepo.existsByEmail(dto.getEmail()))
+                throw new BadRequestException("Email: '" + dto.getEmail() + "' is already registered");
+            var sanitizedEmail = SanitizerUtility.sanitizeEmail(dto.getEmail());
             if (userRepo.existsByRealEmail(sanitizedEmail))
-                throw new BadRequestException("Alias version of email: '" + dto.email + "' is already registered");
+                throw new BadRequestException("Alias version of email: '" + dto.getEmail() + "' is already registered");
             var user = toUserModel(dto, sanitizedEmail);
             var shouldVerifyRegisteredEmail = unleash.isEnabled(FeatureFlags.REGISTRATION_EMAIL_VERIFICATION.name());
             user.setEmailVerified(!shouldVerifyRegisteredEmail);
@@ -80,21 +80,21 @@ public class UserService {
         throw new ServiceUnavailableException("Registration is currently disabled. Please try again later");
     }
 
-    public UserModel toUserModel(RegistrationDto dto, String sanitizedEmail) {
+    private UserModel toUserModel(RegistrationDto dto, String sanitizedEmail) {
         return UserModel.builder()
-                .username(dto.username)
-                .password(passwordEncoder.encode(dto.password))
-                .email(dto.email)
+                .username(dto.getUsername())
+                .password(passwordEncoder.encode(dto.getPassword()))
+                .email(dto.getEmail())
                 .realEmail(sanitizedEmail)
-                .firstName(dto.firstName)
-                .middleName(dto.middleName)
-                .lastName(dto.lastName)
+                .firstName(dto.getFirstName())
+                .middleName(dto.getMiddleName())
+                .lastName(dto.getLastName())
                 .createdBy("SELF")
                 .updatedBy("SELF")
                 .build();
     }
 
-    public UUID generateEmailVerificationToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    private UUID generateEmailVerificationToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedEmailVerificationTokenKey = getEncryptedEmailVerificationTokenKey(user);
         var existingEncryptedEmailVerificationToken = redisService.get(encryptedEmailVerificationTokenKey);
         if (existingEncryptedEmailVerificationToken != null)
@@ -106,8 +106,7 @@ public class UserService {
             redisService.save(encryptedEmailVerificationTokenMappingKey, emailVerificationTokenRandomConverter.encrypt(user.getId()), RedisService.DEFAULT_TTL);
             return emailVerificationToken;
         } catch (Exception ex) {
-            redisService.delete(encryptedEmailVerificationTokenKey);
-            redisService.delete(encryptedEmailVerificationTokenMappingKey);
+            redisService.delete(Set.of(encryptedEmailVerificationTokenKey, encryptedEmailVerificationTokenMappingKey));
             throw new RuntimeException("Failed to generate email verification token", ex);
         }
     }

@@ -148,8 +148,7 @@ public class JWTUtility {
             redisService.save(encryptedRefreshTokenMappingKey, refreshTokenRandomConverter.encrypt(user.getId()), REFRESH_TOKEN_EXPIRES_IN_DURATION);
             return refreshToken;
         } catch (Exception ex) {
-            redisService.delete(encryptedRefreshTokenKey);
-            redisService.delete(encryptedRefreshTokenMappingKey);
+            redisService.delete(Set.of(encryptedRefreshTokenKey, encryptedRefreshTokenMappingKey));
             throw new RuntimeException("Failed to generate refresh token", ex);
         }
     }

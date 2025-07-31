@@ -98,8 +98,7 @@ public class AuthenticationService {
             redisService.save(encryptedStateTokenMappingKey, stateTokenRandomConverter.encrypt(user.getId()), RedisService.DEFAULT_TTL);
             return stateToken;
         } catch (Exception ex) {
-            redisService.delete(encryptedStateTokenKey);
-            redisService.delete(encryptedStateTokenMappingKey);
+            redisService.delete(Set.of(encryptedStateTokenKey, encryptedStateTokenMappingKey));
             throw new RuntimeException("Failed to generate state token", ex);
         }
     }

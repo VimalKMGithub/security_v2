@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.vimal.security.v2.utils.JSONUtility;
 
 import java.util.Arrays;
@@ -34,7 +35,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("message", "Service Unavailable", "reason", ex.getMessage()));
     }
 
-    @ExceptionHandler({BadRequestException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({BadRequestException.class, HttpMessageNotReadableException.class, NoResourceFoundException.class})
     public ResponseEntity<Map<String, String>> handleBadRequestExceptions(Exception ex) {
         return ResponseEntity.badRequest().body(Map.of("error", "Bad Request", "message", ex.getMessage()));
     }

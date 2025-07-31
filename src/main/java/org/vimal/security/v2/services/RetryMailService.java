@@ -44,7 +44,7 @@ public class RetryMailService {
         log.error("Failed to send email to '{}' with subject '{}'. Error: {}", to, subject, ex.getMessage());
     }
 
-    public String getSignature() {
+    private String getSignature() {
         return String.format("""
                         \n
                         -------------------------------

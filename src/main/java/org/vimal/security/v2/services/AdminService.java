@@ -106,8 +106,8 @@ public class AdminService {
         throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
     }
 
-    public Collection<String> validateRolesRestriction(Collection<String> roles,
-                                                       String assignerTopRole) {
+    private Collection<String> validateRolesRestriction(Collection<String> roles,
+                                                        String assignerTopRole) {
         var restrictedRoles = new HashSet<String>();
         if (SystemRoles.TOP_ROLES.getFirst().equals(assignerTopRole) || Objects.isNull(roles) || roles.isEmpty())
             return restrictedRoles;
@@ -119,7 +119,7 @@ public class AdminService {
         return restrictedRoles;
     }
 
-    public ResolvedRolesResultDto resolveRoles(Collection<String> roles) {
+    private ResolvedRolesResultDto resolveRoles(Collection<String> roles) {
         if (Objects.isNull(roles) || roles.isEmpty())
             return new ResolvedRolesResultDto(new HashSet<>(), new HashSet<>());
         var foundRoles = roleRepo.findAllById(roles);
@@ -127,9 +127,9 @@ public class AdminService {
         return new ResolvedRolesResultDto(foundRoles, roles.stream().filter(role -> !foundRoleNames.contains(role)).collect(Collectors.toSet()));
     }
 
-    public UserModel toUserModel(UserCreationUpdationDto dto,
-                                 Collection<RoleModel> roles,
-                                 UserModel creator) {
+    private UserModel toUserModel(UserCreationUpdationDto dto,
+                                  Collection<RoleModel> roles,
+                                  UserModel creator) {
         return UserModel.builder()
                 .username(dto.getUsername())
                 .email(dto.getEmail())

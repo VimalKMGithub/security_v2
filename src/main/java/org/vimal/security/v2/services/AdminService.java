@@ -325,4 +325,11 @@ public class AdminService {
         }
         throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
     }
+
+//    public ResponseEntity<Map<String, Object>> updateUser(UserUpdationDto dto) {
+//        return updateUsers(Set.of(dto));
+//    }
+//
+//    public ResponseEntity<Map<String, Object>> updateUsers(Collection<UserUpdationDto> dtos) {
+//    }
 }

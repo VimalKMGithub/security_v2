@@ -70,4 +70,16 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> getUsers(@RequestBody Set<String> usernamesOrEmails) {
         return adminService.getUsers(usernamesOrEmails);
     }
+
+//    @PutMapping("/update/user")
+//    @PreAuthorize("@PreAuth.canUpdateUsers()")
+//    public ResponseEntity<Map<String, Object>> updateUser(@RequestBody UserUpdationDto dto) {
+//        return adminService.updateUser(dto);
+//    }
+//
+//    @PutMapping("/update/users")
+//    @PreAuthorize("@PreAuth.canUpdateUsers()")
+//    public ResponseEntity<Map<String, Object>> updateUsers(@RequestBody Set<UserUpdationDto> dtos) {
+//        return adminService.updateUsers(dtos);
+//    }
 }

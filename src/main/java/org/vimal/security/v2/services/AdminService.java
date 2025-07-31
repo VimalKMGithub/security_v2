@@ -291,15 +291,15 @@ public class AdminService {
         var variant = unleash.getVariant(FeatureFlags.ALLOW_READ_USERS.name());
         if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
             if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_READ_USERS_BY_USERS_HAVE_PERMISSION_TO_READ_USERS.name()))
-                throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
+                throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
             if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to read");
             if (variant.isEnabled() && variant.getPayload().isPresent()) {
                 var maxUsersToReadAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
                 if (maxUsersToReadAtATime < 1) maxUsersToReadAtATime = DEFAULT_MAX_USERS_TO_READ_AT_A_TIME;
                 if (usernamesOrEmails.size() > maxUsersToReadAtATime)
-                    throw new BadRequestException("Cannot delete more than " + maxUsersToReadAtATime + " users at a time");
+                    throw new BadRequestException("Cannot read more than " + maxUsersToReadAtATime + " users at a time");
             } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_READ_AT_A_TIME)
-                throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_READ_AT_A_TIME + " users at a time");
+                throw new BadRequestException("Cannot read more than " + DEFAULT_MAX_USERS_TO_READ_AT_A_TIME + " users at a time");
             var invalidInputs = new HashSet<String>();
             var emails = new HashSet<String>();
             var usernames = new HashSet<String>();

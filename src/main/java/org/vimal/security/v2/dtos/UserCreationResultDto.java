@@ -12,10 +12,10 @@ import java.util.Collection;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserCreationResultDto {
-    private Collection<String> invalidInputs;
-    private Collection<String> usernames;
-    private Collection<String> emails;
-    private Collection<String> duplicateUsernamesInDtos;
-    private Collection<String> duplicateEmailsInDtos;
-    private Collection<String> roles;
+    public Collection<String> invalidInputs;
+    public Collection<String> usernames;
+    public Collection<String> emails;
+    public Collection<String> duplicateUsernamesInDtos;
+    public Collection<String> duplicateEmailsInDtos;
+    public Collection<String> roles;
 }

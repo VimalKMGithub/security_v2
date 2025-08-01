@@ -425,72 +425,9 @@ public class AdminService {
         if (entryCheck(variant, userHighestTopRole)) {
             checkUserCanUpdateUsers(userHighestTopRole);
             validateDtosSizeForUsersToUpdate(variant, dtos);
-            var invalidOldUsernames = new HashSet<String>();
-            var usernames = new HashSet<String>();
-            var emails = new HashSet<String>();
-            var roles = new HashSet<String>();
-            var duplicateUsernamesInDtos = new HashSet<String>();
-            var duplicateEmailsInDtos = new HashSet<String>();
-            var oldUsernames = new HashSet<String>();
-            var duplicateOldUsernames = new HashSet<String>();
-            var invalidInputs = new HashSet<String>();
-            dtos.remove(null);
-            dtos.forEach(dto -> {
-                try {
-                    ValidationUtility.validateUsername(dto.getOldUsername());
-                    if (!oldUsernames.add(dto.getOldUsername())) duplicateOldUsernames.add(dto.getOldUsername());
-                } catch (BadRequestException ex) {
-                    invalidOldUsernames.add(dto.getOldUsername());
-                }
-                if (dto.getUsername() != null) {
-                    try {
-                        ValidationUtility.validateUsername(dto.getUsername());
-                        if (!usernames.add(dto.getUsername())) duplicateUsernamesInDtos.add(dto.getUsername());
-                    } catch (BadRequestException ex) {
-                        invalidInputs.add(ex.getMessage());
-                    }
-                }
-                if (dto.getEmail() != null) {
-                    try {
-                        ValidationUtility.validateEmail(dto.getEmail());
-                        if (!emails.add(dto.getEmail())) duplicateEmailsInDtos.add(dto.getEmail());
-                    } catch (BadRequestException ex) {
-                        invalidInputs.add(ex.getMessage());
-                    }
-                }
-                if (dto.getPassword() != null) {
-                    try {
-                        ValidationUtility.validatePassword(dto.getPassword());
-                    } catch (BadRequestException ex) {
-                        invalidInputs.add(ex.getMessage());
-                    }
-                }
-                if (dto.getFirstName() != null) {
-                    try {
-                        ValidationUtility.validateFirstName(dto.getFirstName());
-                    } catch (BadRequestException ex) {
-                        invalidInputs.add(ex.getMessage());
-                    }
-                }
-                if (dto.getMiddleName() != null) {
-                    try {
-                        ValidationUtility.validateMiddleName(dto.getMiddleName());
-                    } catch (BadRequestException ex) {
-                        invalidInputs.add(ex.getMessage());
-                    }
-                }
-                if (dto.getLastName() != null) {
-                    try {
-                        ValidationUtility.validateLastName(dto.getLastName());
-                    } catch (BadRequestException ex) {
-                        invalidInputs.add(ex.getMessage());
-                    }
-                }
-                if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
-                    dto.setRoles(dto.getRoles().stream().filter(r -> r != null && !r.isBlank()).collect(Collectors.toSet()));
-                    if (!dto.getRoles().isEmpty()) roles.addAll(dto.getRoles());
-                }
-            });
+            var userUpdationResult = validateInputsForUserUpdation(dtos);
+            var mapOfErrors = errorsStuffingIfAnyInUserUpdation(userUpdationResult, user, userHighestTopRole);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
         }
         throw new ServiceUnavailableException("Updating users is currently disabled. Please try again later");
     }
@@ -510,5 +447,101 @@ public class AdminService {
                 throw new BadRequestException("Cannot update more than " + maxUsersToUpdateAtATime + " users at a time");
         } else if (dtos.size() > DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME)
             throw new BadRequestException("Cannot update more than " + DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME + " users at a time");
+    }
+
+    private UserUpdationResultDto validateInputsForUserUpdation(Set<UserUpdationDto> dtos) {
+        var invalidOldUsernames = new HashSet<String>();
+        var usernames = new HashSet<String>();
+        var emails = new HashSet<String>();
+        var roles = new HashSet<String>();
+        var duplicateUsernamesInDtos = new HashSet<String>();
+        var duplicateEmailsInDtos = new HashSet<String>();
+        var oldUsernames = new HashSet<String>();
+        var duplicateOldUsernames = new HashSet<String>();
+        var invalidInputs = new HashSet<String>();
+        dtos.remove(null);
+        dtos.forEach(dto -> {
+            try {
+                ValidationUtility.validateUsername(dto.getOldUsername());
+                if (!oldUsernames.add(dto.getOldUsername())) duplicateOldUsernames.add(dto.getOldUsername());
+            } catch (BadRequestException ex) {
+                invalidOldUsernames.add(dto.getOldUsername());
+            }
+            if (dto.getUsername() != null) {
+                try {
+                    ValidationUtility.validateUsername(dto.getUsername());
+                    if (!usernames.add(dto.getUsername())) duplicateUsernamesInDtos.add(dto.getUsername());
+                } catch (BadRequestException ex) {
+                    invalidInputs.add(ex.getMessage());
+                }
+            }
+            if (dto.getEmail() != null) {
+                try {
+                    ValidationUtility.validateEmail(dto.getEmail());
+                    if (!emails.add(dto.getEmail())) duplicateEmailsInDtos.add(dto.getEmail());
+                } catch (BadRequestException ex) {
+                    invalidInputs.add(ex.getMessage());
+                }
+            }
+            if (dto.getPassword() != null) {
+                try {
+                    ValidationUtility.validatePassword(dto.getPassword());
+                } catch (BadRequestException ex) {
+                    invalidInputs.add(ex.getMessage());
+                }
+            }
+            if (dto.getFirstName() != null) {
+                try {
+                    ValidationUtility.validateFirstName(dto.getFirstName());
+                } catch (BadRequestException ex) {
+                    invalidInputs.add(ex.getMessage());
+                }
+            }
+            if (dto.getMiddleName() != null) {
+                try {
+                    ValidationUtility.validateMiddleName(dto.getMiddleName());
+                } catch (BadRequestException ex) {
+                    invalidInputs.add(ex.getMessage());
+                }
+            }
+            if (dto.getLastName() != null) {
+                try {
+                    ValidationUtility.validateLastName(dto.getLastName());
+                } catch (BadRequestException ex) {
+                    invalidInputs.add(ex.getMessage());
+                }
+            }
+            if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
+                dto.setRoles(dto.getRoles().stream().filter(r -> r != null && !r.isBlank()).collect(Collectors.toSet()));
+                if (!dto.getRoles().isEmpty()) roles.addAll(dto.getRoles());
+            }
+        });
+        return new UserUpdationResultDto(invalidInputs, usernames, emails, duplicateUsernamesInDtos, duplicateEmailsInDtos, roles, oldUsernames, duplicateOldUsernames, invalidOldUsernames);
+    }
+
+    private Map<String, Object> errorsStuffingIfAnyInUserUpdation(UserUpdationResultDto userUpdationResult,
+                                                                  UserDetailsImpl user,
+                                                                  String userHighestTopRole) {
+        var mapOfErrors = new HashMap<String, Object>();
+        if (!userUpdationResult.getInvalidInputs().isEmpty())
+            mapOfErrors.put("invalid_inputs", userUpdationResult.getInvalidInputs());
+        if (!userUpdationResult.getDuplicateUsernamesInDtos().isEmpty())
+            mapOfErrors.put("duplicate_usernames_in_request", userUpdationResult.getDuplicateUsernamesInDtos());
+        if (!userUpdationResult.getDuplicateEmailsInDtos().isEmpty())
+            mapOfErrors.put("duplicate_emails_in_request", userUpdationResult.getDuplicateEmailsInDtos());
+        if (!userUpdationResult.getInvalidOldUsernames().isEmpty())
+            mapOfErrors.put("invalid_old_usernames", userUpdationResult.getInvalidOldUsernames());
+        if (!userUpdationResult.getDuplicateOldUsernames().isEmpty())
+            mapOfErrors.put("duplicate_old_usernames_in_request", userUpdationResult.getDuplicateOldUsernames());
+        var notAllowedToAssignRoles = validateRolesRestriction(userUpdationResult.getRoles(), userHighestTopRole);
+        if (!notAllowedToAssignRoles.isEmpty())
+            mapOfErrors.put("not_allowed_to_assign_roles", notAllowedToAssignRoles);
+        var ownUserInInputs = new HashSet<String>();
+        if (userUpdationResult.getUsernames().contains(user.getUsername())) ownUserInInputs.add(user.getUsername());
+        if (userUpdationResult.getEmails().contains(user.getUserModel().getEmail()))
+            ownUserInInputs.add(user.getUserModel().getEmail());
+        if (!ownUserInInputs.isEmpty())
+            mapOfErrors.put("you_cannot_update_your_own_account_using_this_endpoint", ownUserInInputs);
+        return mapOfErrors;
     }
 }

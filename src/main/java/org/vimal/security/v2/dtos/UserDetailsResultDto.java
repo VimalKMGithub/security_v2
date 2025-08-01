@@ -11,7 +11,7 @@ import java.util.Collection;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserModificationResultDto {
+public class UserDetailsResultDto {
     private boolean isModified;
     private boolean shouldRemoveTokens;
     private Collection<String> invalidInputs;

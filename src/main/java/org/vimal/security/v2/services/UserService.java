@@ -586,9 +586,9 @@ public class UserService {
         return ResponseEntity.ok(Map.of("message", "No details were updated", "user", MapperUtility.toUserSummaryDto(user)));
     }
 
-    private UserModificationResultDto validateAndSet(UserModel user,
-                                                     UpdationDto dto) {
-        var userModificationResult = new UserModificationResultDto(false, false, new HashSet<>());
+    private UserDetailsResultDto validateAndSet(UserModel user,
+                                                UpdationDto dto) {
+        var userModificationResult = new UserDetailsResultDto(false, false, new HashSet<>());
         try {
             ValidationUtility.validatePassword(dto.getOldPassword());
             if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))

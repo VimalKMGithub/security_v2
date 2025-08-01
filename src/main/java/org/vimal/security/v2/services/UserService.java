@@ -26,6 +26,8 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    private static final Collection<String> REMOVE_DOTS = Set.of("gmail.com", "googlemail.com");
+    private static final Collection<String> REMOVE_ALIAS_PART = Set.of("gmail.com", "googlemail.com", "live.com", "protonmail.com", "hotmail.com", "outlook.com");
     private static final String EMAIL_VERIFICATION_TOKEN_PREFIX = "SECURITY_V2_EMAIL_VERIFICATION_TOKEN:";
     private static final String EMAIL_VERIFICATION_TOKEN_MAPPING_PREFIX = "SECURITY_V2_EMAIL_VERIFICATION_TOKEN_MAPPING:";
     private static final String FORGOT_PASSWORD_OTP_PREFIX = "SECURITY_V2_FORGOT_PASSWORD_OTP:";
@@ -76,9 +78,6 @@ public class UserService {
         }
         throw new ServiceUnavailableException("Registration is currently disabled. Please try again later");
     }
-
-    private static final Collection<String> REMOVE_DOTS = Set.of("gmail.com", "googlemail.com");
-    private static final Collection<String> REMOVE_ALIAS_PART = Set.of("gmail.com", "googlemail.com", "live.com", "protonmail.com", "hotmail.com", "outlook.com");
 
     public static String sanitizeEmail(String email) {
         var lowerCasedEmail = email.trim().toLowerCase();

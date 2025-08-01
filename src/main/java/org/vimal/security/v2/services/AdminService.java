@@ -390,6 +390,27 @@ public class AdminService {
                         invalidInputs.add(ex.getMessage());
                     }
                 }
+                if (dto.getFirstName() != null) {
+                    try {
+                        ValidationUtility.validateFirstName(dto.getFirstName());
+                    } catch (BadRequestException ex) {
+                        invalidInputs.add(ex.getMessage());
+                    }
+                }
+                if (dto.getMiddleName() != null) {
+                    try {
+                        ValidationUtility.validateMiddleName(dto.getMiddleName());
+                    } catch (BadRequestException ex) {
+                        invalidInputs.add(ex.getMessage());
+                    }
+                }
+                if (dto.getLastName() != null) {
+                    try {
+                        ValidationUtility.validateLastName(dto.getLastName());
+                    } catch (BadRequestException ex) {
+                        invalidInputs.add(ex.getMessage());
+                    }
+                }
                 if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
                     dto.setRoles(dto.getRoles().stream().filter(r -> r != null && !r.isBlank()).collect(Collectors.toSet()));
                     if (!dto.getRoles().isEmpty()) roles.addAll(dto.getRoles());

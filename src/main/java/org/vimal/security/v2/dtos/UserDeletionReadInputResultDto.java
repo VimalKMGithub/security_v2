@@ -5,15 +5,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Collection;
+import java.util.Set;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserDeletionReadInputResultDto {
-    private Collection<String> invalidInputs;
-    private Collection<String> usernames;
-    private Collection<String> emails;
-    private Collection<String> ownUserInInputs;
+    private Set<String> invalidInputs;
+    private Set<String> usernames;
+    private Set<String> emails;
+    private Set<String> ownUserInInputs;
 }

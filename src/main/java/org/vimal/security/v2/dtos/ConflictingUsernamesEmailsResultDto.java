@@ -5,13 +5,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Collection;
+import java.util.Set;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConflictingUsernamesEmailsResultDto {
-    private Collection<String> conflictingUsernames;
-    private Collection<String> conflictingEmails;
+    private Set<String> conflictingUsernames;
+    private Set<String> conflictingEmails;
 }

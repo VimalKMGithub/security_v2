@@ -5,17 +5,17 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Collection;
+import java.util.Set;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserCreationResultDto {
-    public Collection<String> invalidInputs;
-    public Collection<String> usernames;
-    public Collection<String> emails;
-    public Collection<String> duplicateUsernamesInDtos;
-    public Collection<String> duplicateEmailsInDtos;
-    public Collection<String> roles;
+    public Set<String> invalidInputs;
+    public Set<String> usernames;
+    public Set<String> emails;
+    public Set<String> duplicateUsernamesInDtos;
+    public Set<String> duplicateEmailsInDtos;
+    public Set<String> roles;
 }

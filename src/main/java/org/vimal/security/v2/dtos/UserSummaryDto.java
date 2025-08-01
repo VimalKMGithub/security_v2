@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
-import java.util.Collection;
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -18,8 +18,8 @@ public class UserSummaryDto {
     public String email;
     public String createdBy;
     public String updatedBy;
-    public Collection<String> roles;
-    public Collection<String> mfaMethods;
+    public Set<String> roles;
+    public Set<String> mfaMethods;
     public Instant lastLoginAt;
     public Instant passwordChangedAt;
     public Instant createdAt;

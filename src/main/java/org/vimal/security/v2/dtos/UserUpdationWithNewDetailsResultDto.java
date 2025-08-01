@@ -6,8 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.vimal.security.v2.models.UserModel;
 
-import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -15,6 +15,6 @@ import java.util.Map;
 @AllArgsConstructor
 public class UserUpdationWithNewDetailsResultDto {
     private Map<String, Object> mapOfErrors;
-    private Collection<UserModel> updatedUsers;
-    private Collection<UserModel> usersToWhichWeHaveToRevokeTokens;
+    private Set<UserModel> updatedUsers;
+    private Set<UserModel> usersToWhichWeHaveToRevokeTokens;
 }

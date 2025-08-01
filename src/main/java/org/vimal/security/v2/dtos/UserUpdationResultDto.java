@@ -4,25 +4,25 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Collection;
+import java.util.Set;
 
 @Getter
 @Setter
 @NoArgsConstructor
 public class UserUpdationResultDto extends UserCreationResultDto {
-    private Collection<String> oldUsernames;
-    private Collection<String> duplicateOldUsernames;
-    private Collection<String> invalidOldUsernames;
+    private Set<String> oldUsernames;
+    private Set<String> duplicateOldUsernames;
+    private Set<String> invalidOldUsernames;
 
-    public UserUpdationResultDto(Collection<String> invalidInputs,
-                                 Collection<String> usernames,
-                                 Collection<String> emails,
-                                 Collection<String> duplicateUsernamesInDtos,
-                                 Collection<String> duplicateEmailsInDtos,
-                                 Collection<String> roles,
-                                 Collection<String> oldUsernames,
-                                 Collection<String> duplicateOldUsernames,
-                                 Collection<String> invalidOldUsernames) {
+    public UserUpdationResultDto(Set<String> invalidInputs,
+                                 Set<String> usernames,
+                                 Set<String> emails,
+                                 Set<String> duplicateUsernamesInDtos,
+                                 Set<String> duplicateEmailsInDtos,
+                                 Set<String> roles,
+                                 Set<String> oldUsernames,
+                                 Set<String> duplicateOldUsernames,
+                                 Set<String> invalidOldUsernames) {
         super(invalidInputs, usernames, emails, duplicateUsernamesInDtos, duplicateEmailsInDtos, roles);
         this.oldUsernames = oldUsernames;
         this.duplicateOldUsernames = duplicateOldUsernames;

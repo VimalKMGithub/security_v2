@@ -6,8 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.vimal.security.v2.models.UserModel;
 
-import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -15,7 +15,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class UserDeletionResultDto {
     private Map<String, Object> mapOfErrors;
-    private Collection<UserModel> usersToDelete;
-    private Collection<UserModel> softDeletedUsers;
-    private Collection<String> rolesOfSoftDeletedUsers;
+    private Set<UserModel> usersToDelete;
+    private Set<UserModel> softDeletedUsers;
+    private Set<String> rolesOfSoftDeletedUsers;
 }

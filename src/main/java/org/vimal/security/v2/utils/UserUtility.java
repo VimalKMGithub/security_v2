@@ -11,9 +11,9 @@ import org.vimal.security.v2.exceptions.ServiceUnavailableException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class UserUtility {
     public static Authentication getAuthenticationOfCurrentAuthenticatedUser() {
@@ -50,7 +50,7 @@ public class UserUtility {
         return getCurrentAuthenticatedUserDetails().getUserModel();
     }
 
-    public static Collection<String> validateInputs(RegistrationDto dto) {
+    public static Set<String> validateInputs(RegistrationDto dto) {
         var validationErrors = new HashSet<String>();
         try {
             ValidationUtility.validateUsername(dto.getUsername());

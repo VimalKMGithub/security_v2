@@ -240,7 +240,7 @@ public class JWTUtility {
         else redisService.deleteAll(Set.of(encryptedJWTIdKey, encryptedRefreshTokenKey));
     }
 
-    public void revokeTokens(Collection<UserModel> users) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public void revokeTokens(Set<UserModel> users) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedKeys = new HashSet<>();
         var encryptedRefreshTokenKeys = new HashSet<>();
         for (var user : users) {

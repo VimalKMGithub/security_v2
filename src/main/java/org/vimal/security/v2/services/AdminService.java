@@ -48,7 +48,9 @@ public class AdminService {
     private final JWTUtility jwtUtility;
 
     public ResponseEntity<Map<String, Object>> createUser(UserCreationDto dto) {
-        return createUsers(Set.of(dto));
+        var dtosSet = new HashSet<UserCreationDto>();
+        dtosSet.add(dto);
+        return createUsers(dtosSet);
     }
 
     public ResponseEntity<Map<String, Object>> createUsers(Set<UserCreationDto> dtos) {
@@ -201,7 +203,9 @@ public class AdminService {
     }
 
     public ResponseEntity<Map<String, Object>> deleteUser(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return deleteUsers(Set.of(usernameOrEmail));
+        var usernamesOrEmailsSet = new HashSet<String>();
+        usernamesOrEmailsSet.add(usernameOrEmail);
+        return deleteUsers(usernamesOrEmailsSet);
     }
 
     public ResponseEntity<Map<String, Object>> deleteUsers(Set<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -330,7 +334,9 @@ public class AdminService {
     }
 
     public ResponseEntity<Map<String, Object>> deleteUserHard(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return deleteUsersHard(Set.of(usernameOrEmail));
+        var usernamesOrEmailsSet = new HashSet<String>();
+        usernamesOrEmailsSet.add(usernameOrEmail);
+        return deleteUsersHard(usernamesOrEmailsSet);
     }
 
     public ResponseEntity<Map<String, Object>> deleteUsersHard(Set<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -365,7 +371,9 @@ public class AdminService {
     }
 
     public ResponseEntity<Map<String, Object>> getUser(String usernameOrEmail) {
-        return getUsers(Set.of(usernameOrEmail));
+        var usernamesOrEmailsSet = new HashSet<String>();
+        usernamesOrEmailsSet.add(usernameOrEmail);
+        return getUsers(usernamesOrEmailsSet);
     }
 
     public ResponseEntity<Map<String, Object>> getUsers(Set<String> usernamesOrEmails) {
@@ -415,7 +423,9 @@ public class AdminService {
     }
 
     public ResponseEntity<Map<String, Object>> updateUser(UserUpdationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return updateUsers(Set.of(dto));
+        var dtosSet = new HashSet<UserUpdationDto>();
+        dtosSet.add(dto);
+        return updateUsers(dtosSet);
     }
 
     public ResponseEntity<Map<String, Object>> updateUsers(Set<UserUpdationDto> dtos) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

@@ -428,6 +428,10 @@ public class AdminService {
             var userUpdationResult = validateInputsForUserUpdation(dtos);
             var mapOfErrors = errorsStuffingIfAnyInUserUpdation(userUpdationResult, user, userHighestTopRole);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            var conflictingUsernamesEmailsResult = getConflictingUsernamesEmails(userUpdationResult, dtos);
+            mapOfErrors = errorsStuffingIfAnyInUserUpdation(conflictingUsernamesEmailsResult);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            var usersToUpdate = userRepo.findByUsernameIn(userUpdationResult.getOldUsernames());
         }
         throw new ServiceUnavailableException("Updating users is currently disabled. Please try again later");
     }
@@ -542,6 +546,37 @@ public class AdminService {
             ownUserInInputs.add(user.getUserModel().getEmail());
         if (!ownUserInInputs.isEmpty())
             mapOfErrors.put("you_cannot_update_your_own_account_using_this_endpoint", ownUserInInputs);
+        return mapOfErrors;
+    }
+
+    private ConflictingUsernamesEmailsResultDto getConflictingUsernamesEmails(UserUpdationResultDto userUpdationResult,
+                                                                              Set<UserUpdationDto> dtos) {
+        var usersFoundByUsernames = userRepo.findByUsernameIn(userUpdationResult.getUsernames());
+        var usersFoundByEmails = userRepo.findByEmailIn(userUpdationResult.getEmails());
+        var dtosUsernameToOldUsernameMap = new HashMap<String, String>();
+        var dtosEmailToOldUsernameMap = new HashMap<String, String>();
+        for (var dto : dtos) {
+            if (dto.getUsername() != null)
+                dtosUsernameToOldUsernameMap.put(dto.getUsername(), dto.getOldUsername());
+            if (dto.getEmail() != null) dtosEmailToOldUsernameMap.put(dto.getEmail(), dto.getOldUsername());
+        }
+        var conflictingUsernames = usersFoundByUsernames.stream().filter(u -> {
+            var requesterForUsername = dtosUsernameToOldUsernameMap.get(u.getUsername());
+            return requesterForUsername != null && !u.getUsername().equals(requesterForUsername);
+        }).map(UserModel::getUsername).collect(Collectors.toSet());
+        var conflictingEmails = usersFoundByEmails.stream().filter(u -> {
+            var requesterForEmail = dtosEmailToOldUsernameMap.get(u.getEmail());
+            return requesterForEmail != null && !u.getEmail().equals(requesterForEmail);
+        }).map(UserModel::getEmail).collect(Collectors.toSet());
+        return new ConflictingUsernamesEmailsResultDto(conflictingUsernames, conflictingEmails);
+    }
+
+    private Map<String, Object> errorsStuffingIfAnyInUserUpdation(ConflictingUsernamesEmailsResultDto conflictingUsernamesEmailsResult) {
+        var mapOfErrors = new HashMap<String, Object>();
+        if (!conflictingUsernamesEmailsResult.getConflictingUsernames().isEmpty())
+            mapOfErrors.put("conflicting_usernames", conflictingUsernamesEmailsResult.getConflictingUsernames());
+        if (!conflictingUsernamesEmailsResult.getConflictingEmails().isEmpty())
+            mapOfErrors.put("conflicting_emails", conflictingUsernamesEmailsResult.getConflictingEmails());
         return mapOfErrors;
     }
 }

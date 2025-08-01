@@ -223,76 +223,98 @@ public class AdminService {
                                                     UserDetailsImpl user,
                                                     String userHighestTopRole) {
         var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_USERS.name());
-        if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
-            if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_DELETE_USERS_BY_USERS_HAVE_PERMISSION_TO_DELETE_USERS.name()))
-                throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
-            if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to delete");
-            if (variant.isEnabled() && variant.getPayload().isPresent()) {
-                var maxUsersToDeleteAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
-                if (maxUsersToDeleteAtATime < 1) maxUsersToDeleteAtATime = DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME;
-                if (usernamesOrEmails.size() > maxUsersToDeleteAtATime)
-                    throw new BadRequestException("Cannot delete more than " + maxUsersToDeleteAtATime + " users at a time");
-            } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME)
-                throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME + " users at a time");
-            var invalidInputs = new HashSet<String>();
-            var emails = new HashSet<String>();
-            var usernames = new HashSet<String>();
-            usernamesOrEmails.remove(null);
-            usernamesOrEmails.forEach(identifier -> {
-                if (ValidationUtility.USERNAME_PATTERN.matcher(identifier).matches()) usernames.add(identifier);
-                else if (ValidationUtility.EMAIL_PATTERN.matcher(identifier).matches()) emails.add(identifier);
-                else invalidInputs.add(identifier);
-            });
-            var mapOfErrors = new HashMap<String, Object>();
-            if (!invalidInputs.isEmpty()) mapOfErrors.put("invalid_inputs", invalidInputs);
-            var ownAccountFoundWithUsernameOrEmail = new HashSet<String>();
-            if (usernames.contains(user.getUsername())) ownAccountFoundWithUsernameOrEmail.add(user.getUsername());
-            if (emails.contains(user.getUserModel().getEmail()))
-                ownAccountFoundWithUsernameOrEmail.add(user.getUserModel().getEmail());
-            if (!ownAccountFoundWithUsernameOrEmail.isEmpty())
-                mapOfErrors.put("you_cannot_delete_your_own_account_using_this_endpoint", ownAccountFoundWithUsernameOrEmail);
+        if (entryCheck(variant, userHighestTopRole)) {
+            checkUserCanDeleteUsers(userHighestTopRole);
+            validateDtosSizeForUsersDeletion(variant, usernamesOrEmails);
+            var userDeletionInputResult = validateInput(usernamesOrEmails, user);
+            var mapOfErrors = errorsStuffingIfAnyInInput(userDeletionInputResult);
             if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null, null);
-            var foundByUsernames = userRepo.findByUsernameIn(usernames);
-            var foundByEmails = userRepo.findByEmailIn(emails);
-            var usersToDelete = new HashSet<UserModel>();
-            var softDeletedUsers = new HashSet<UserModel>();
-            var rolesOfUsers = new HashSet<String>();
-            var rolesOfSoftDeletedUsers = new HashSet<String>();
-            foundByUsernames.forEach(userToDelete -> {
-                usernames.remove(userToDelete.getUsername());
-                if (userToDelete.isAccountDeleted()) {
-                    softDeletedUsers.add(userToDelete);
-                    if (!userToDelete.getRoles().isEmpty())
-                        userToDelete.getRoles().forEach(role -> rolesOfSoftDeletedUsers.add(role.getRoleName()));
-                    return;
-                }
-                if (!userToDelete.getRoles().isEmpty())
-                    userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
-                userToDelete.recordAccountDeletion(user.getUsername());
-                usersToDelete.add(userToDelete);
-            });
-            foundByEmails.forEach(userToDelete -> {
-                emails.remove(userToDelete.getEmail());
-                if (userToDelete.isAccountDeleted()) {
-                    softDeletedUsers.add(userToDelete);
-                    if (!userToDelete.getRoles().isEmpty())
-                        userToDelete.getRoles().forEach(role -> rolesOfSoftDeletedUsers.add(role.getRoleName()));
-                    return;
-                }
-                if (!userToDelete.getRoles().isEmpty())
-                    userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
-                userToDelete.recordAccountDeletion(user.getUsername());
-                usersToDelete.add(userToDelete);
-            });
-            if (!usernames.isEmpty()) mapOfErrors.put("users_not_found_with_usernames", usernames);
-            if (!emails.isEmpty()) mapOfErrors.put("users_not_found_with_emails", emails);
-            var notAllowedToDeleteUsersWithRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);
-            if (!notAllowedToDeleteUsersWithRoles.isEmpty())
-                mapOfErrors.put("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles);
-            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null, null);
+//            var foundByUsernames = userRepo.findByUsernameIn(userDeletionInputResult.getUsernames());
+//            var foundByEmails = userRepo.findByEmailIn(userDeletionInputResult.getEmails());
+//            var usersToDelete = new HashSet<UserModel>();
+//            var softDeletedUsers = new HashSet<UserModel>();
+//            var rolesOfUsers = new HashSet<String>();
+//            var rolesOfSoftDeletedUsers = new HashSet<String>();
+//            foundByUsernames.forEach(userToDelete -> {
+//                userDeletionInputResult.getUsernames().remove(userToDelete.getUsername());
+//                if (userToDelete.isAccountDeleted()) {
+//                    softDeletedUsers.add(userToDelete);
+//                    if (!userToDelete.getRoles().isEmpty())
+//                        userToDelete.getRoles().forEach(role -> rolesOfSoftDeletedUsers.add(role.getRoleName()));
+//                    return;
+//                }
+//                if (!userToDelete.getRoles().isEmpty())
+//                    userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
+//                userToDelete.recordAccountDeletion(user.getUsername());
+//                usersToDelete.add(userToDelete);
+//            });
+//            foundByEmails.forEach(userToDelete -> {
+//                userDeletionInputResult.getEmails().remove(userToDelete.getEmail());
+//                if (userToDelete.isAccountDeleted()) {
+//                    softDeletedUsers.add(userToDelete);
+//                    if (!userToDelete.getRoles().isEmpty())
+//                        userToDelete.getRoles().forEach(role -> rolesOfSoftDeletedUsers.add(role.getRoleName()));
+//                    return;
+//                }
+//                if (!userToDelete.getRoles().isEmpty())
+//                    userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
+//                userToDelete.recordAccountDeletion(user.getUsername());
+//                usersToDelete.add(userToDelete);
+//            });
+//            if (!userDeletionInputResult.getEmails().isEmpty())
+//                mapOfErrors.put("users_not_found_with_usernames", userDeletionInputResult.getEmails());
+//            if (!userDeletionInputResult.getEmails().isEmpty())
+//                mapOfErrors.put("users_not_found_with_emails", userDeletionInputResult.getEmails());
+//            var notAllowedToDeleteUsersWithRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);
+//            if (!notAllowedToDeleteUsersWithRoles.isEmpty())
+//                mapOfErrors.put("not_allowed_to_delete_users_with_roles", notAllowedToDeleteUsersWithRoles);
+//            if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null, null);
             return new UserDeletionResultDto(null, usersToDelete, softDeletedUsers, rolesOfSoftDeletedUsers);
         }
         throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
+    }
+
+    private void checkUserCanDeleteUsers(String userHighestTopRole) {
+        if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_DELETE_USERS_BY_USERS_HAVE_PERMISSION_TO_DELETE_USERS.name()))
+            throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
+    }
+
+    private void validateDtosSizeForUsersDeletion(Variant variant,
+                                                  Collection<String> usernamesOrEmails) {
+        if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to delete");
+        if (variant.isEnabled() && variant.getPayload().isPresent()) {
+            var maxUsersToDeleteAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+            if (maxUsersToDeleteAtATime < 1) maxUsersToDeleteAtATime = DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME;
+            if (usernamesOrEmails.size() > maxUsersToDeleteAtATime)
+                throw new BadRequestException("Cannot delete more than " + maxUsersToDeleteAtATime + " users at a time");
+        } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME)
+            throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME + " users at a time");
+    }
+
+    private UserDeletionInputResultDto validateInput(Set<String> usernamesOrEmails,
+                                                     UserDetailsImpl user) {
+        var invalidInputs = new HashSet<String>();
+        var emails = new HashSet<String>();
+        var usernames = new HashSet<String>();
+        var ownUserInInputs = new HashSet<String>();
+        usernamesOrEmails.remove(null);
+        usernamesOrEmails.forEach(identifier -> {
+            if (ValidationUtility.USERNAME_PATTERN.matcher(identifier).matches()) usernames.add(identifier);
+            else if (ValidationUtility.EMAIL_PATTERN.matcher(identifier).matches()) emails.add(identifier);
+            else invalidInputs.add(identifier);
+        });
+        if (usernames.contains(user.getUsername())) ownUserInInputs.add(user.getUsername());
+        if (usernames.contains(user.getUserModel().getEmail())) ownUserInInputs.add(user.getUserModel().getEmail());
+        return new UserDeletionInputResultDto(invalidInputs, usernames, emails, ownUserInInputs);
+    }
+
+    private Map<String, Object> errorsStuffingIfAnyInInput(UserDeletionInputResultDto userDeletionInputResult) {
+        var mapOfErrors = new HashMap<String, Object>();
+        if (!userDeletionInputResult.getInvalidInputs().isEmpty())
+            mapOfErrors.put("invalid_inputs", userDeletionInputResult.getInvalidInputs());
+        if (!userDeletionInputResult.getOwnUserInInputs().isEmpty())
+            mapOfErrors.put("you_cannot_delete_your_own_account_using_this_endpoint", userDeletionInputResult.getOwnUserInInputs());
+        return mapOfErrors;
     }
 
     public ResponseEntity<Map<String, Object>> deleteUserHard(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

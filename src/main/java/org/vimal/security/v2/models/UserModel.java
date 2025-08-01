@@ -7,7 +7,6 @@ import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import java.time.Instant;
-import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -113,7 +112,7 @@ public class UserModel {
     @JoinTable(name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "role_name", referencedColumnName = "role_name"))
-    private Collection<RoleModel> roles;
+    private Set<RoleModel> roles;
 
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;

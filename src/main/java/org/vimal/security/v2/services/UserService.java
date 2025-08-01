@@ -557,7 +557,7 @@ public class UserService {
 
     public ResponseEntity<Map<String, Object>> updateDetails(UpdationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = userRepo.findById(UserUtility.getCurrentAuthenticatedUser().getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-        var userModificationResult = ValidateAndSetUpdateInputUtility.validateAndSet(user, dto, userRepo, passwordEncoder);
+        var userModificationResult = validateAndSet(user, dto);
         if (!userModificationResult.getInvalidInputs().isEmpty())
             return ResponseEntity.badRequest().body(Map.of("invalid_inputs", userModificationResult.getInvalidInputs()));
         if (userModificationResult.isModified()) {
@@ -569,5 +569,59 @@ public class UserService {
             return ResponseEntity.ok(Map.of("message", "User details updated successfully", "user", MapperUtility.toUserSummaryDto(userRepo.save(user))));
         }
         return ResponseEntity.ok(Map.of("message", "No details were updated", "user", MapperUtility.toUserSummaryDto(user)));
+    }
+
+    private UserModificationResultDto validateAndSet(UserModel user,
+                                                     UpdationDto dto) {
+        var userModificationResult = new UserModificationResultDto(false, false, new HashSet<>());
+        try {
+            ValidationUtility.validatePassword(dto.getOldPassword());
+            if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))
+                userModificationResult.getInvalidInputs().add("Invalid old password");
+        } catch (BadRequestException ex) {
+            userModificationResult.getInvalidInputs().add("Invalid old password");
+        }
+        if (dto.getFirstName() != null && !dto.getFirstName().isBlank() && !dto.getFirstName().equals(user.getFirstName())) {
+            try {
+                ValidationUtility.validateFirstName(dto.getFirstName());
+                user.setFirstName(dto.getFirstName());
+                userModificationResult.setModified(true);
+            } catch (BadRequestException ex) {
+                userModificationResult.getInvalidInputs().add(ex.getMessage());
+            }
+        }
+        if (dto.getMiddleName() != null && !dto.getMiddleName().isBlank() && !dto.getMiddleName().equals(user.getMiddleName())) {
+            try {
+                ValidationUtility.validateMiddleName(dto.getMiddleName());
+                user.setMiddleName(dto.getMiddleName());
+                userModificationResult.setModified(true);
+            } catch (BadRequestException ex) {
+                userModificationResult.getInvalidInputs().add(ex.getMessage());
+            }
+        }
+        if (dto.getLastName() != null && !dto.getLastName().isBlank() && !dto.getLastName().equals(user.getLastName())) {
+            try {
+                ValidationUtility.validateLastName(dto.getLastName());
+                user.setLastName(dto.getLastName());
+                userModificationResult.setModified(true);
+            } catch (BadRequestException ex) {
+                userModificationResult.getInvalidInputs().add(ex.getMessage());
+            }
+        }
+        if (dto.getUsername() != null && !dto.getUsername().isBlank() && !dto.getUsername().equals(user.getUsername())) {
+            try {
+                ValidationUtility.validateUsername(dto.getUsername());
+                if (userRepo.existsByUsername(dto.getUsername())) {
+                    userModificationResult.getInvalidInputs().add("Username already taken");
+                } else {
+                    user.setUsername(dto.getUsername());
+                    userModificationResult.setModified(true);
+                    userModificationResult.setShouldRemoveTokens(true);
+                }
+            } catch (BadRequestException ex) {
+                userModificationResult.getInvalidInputs().add(ex.getMessage());
+            }
+        }
+        return userModificationResult;
     }
 }

@@ -9,6 +9,6 @@ import java.time.Instant;
 @Setter
 public class UserSummaryToCompanyUsersDto extends UserSummaryDto {
     private boolean accountDeleted;
-    private Instant accountDeletedAt;
-    private String deletedBy;
+    private Instant lastAccountDeletedAt;
+    private String lastDeletedUndeletedBy;
 }

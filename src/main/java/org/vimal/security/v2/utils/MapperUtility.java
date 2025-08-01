@@ -18,8 +18,8 @@ public class MapperUtility {
         var dto = new UserSummaryToCompanyUsersDto();
         mapCommonFields(user, dto);
         dto.setAccountDeleted(user.isAccountDeleted());
-        dto.setAccountDeletedAt(user.getAccountDeletedAt());
-        dto.setDeletedBy(user.getDeletedBy());
+        dto.setLastAccountDeletedAt(user.getLastAccountDeletedAt());
+        dto.setLastDeletedUndeletedBy(user.getLastDeletedUndeletedBy());
         return dto;
     }
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import io.getunleash.Unleash;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.vimal.security.v2.dtos.ResolvedRolesResultDto;
@@ -51,19 +52,11 @@ public class AdminService {
 
     public ResponseEntity<Map<String, Object>> createUsers(Set<UserCreationDto> dtos) {
         var creator = UserUtility.getCurrentAuthenticatedUserDetails();
-        var creatorHighestTopRole = UserUtility.getUserHighestTopRole(creator);
+        var creatorHighestTopRole = getUserHighestTopRole(creator);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_CREATE_USERS.name());
-        if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(creatorHighestTopRole)) {
-            if (Objects.isNull(creatorHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_CREATE_USERS_BY_USERS_HAVE_PERMISSION_TO_CREATE_USERS.name()))
-                throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
-            if (dtos.isEmpty()) throw new BadRequestException("No users to create");
-            if (variant.isEnabled() && variant.getPayload().isPresent()) {
-                var maxUsersToCreateAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
-                if (maxUsersToCreateAtATime < 1) maxUsersToCreateAtATime = DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME;
-                if (dtos.size() > maxUsersToCreateAtATime)
-                    throw new BadRequestException("Cannot create more than " + maxUsersToCreateAtATime + " users at a time");
-            } else if (dtos.size() > DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME)
-                throw new BadRequestException("Cannot create more than " + DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME + " users at a time");
+        if (UserUtility.entryCheck(variant, creatorHighestTopRole)) {
+            UserUtility.checkUserCanCreateUsers(creatorHighestTopRole, unleash);
+            UserUtility.validateDtosSizeForUsersCreation(variant, dtos, 1, DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME);
             var invalidInputs = new HashSet<String>();
             var roles = new HashSet<String>();
             var duplicateUsernamesInDtos = new HashSet<String>();
@@ -113,6 +106,18 @@ public class AdminService {
             return ResponseEntity.ok(Map.of("message", "Users created successfully", "created_users", userRepo.saveAll(newUsers).stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
         }
         throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
+    }
+
+    private String getUserHighestTopRole(UserDetailsImpl userDetails) {
+        return getUserHighestTopRole(userDetails.getAuthorities());
+    }
+
+    private String getUserHighestTopRole(Collection<? extends GrantedAuthority> authorities) {
+        return authorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(SystemRoles.TOP_ROLES::contains)
+                .min(Comparator.comparingInt(SystemRoles.TOP_ROLES::indexOf))
+                .orElse(null);
     }
 
     private Collection<String> validateRolesRestriction(Collection<String> roles,
@@ -166,7 +171,7 @@ public class AdminService {
 
     public ResponseEntity<Map<String, Object>> deleteUsers(Set<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
-        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+        var userHighestTopRole = getUserHighestTopRole(user);
         var deletionResult = deleteUsersResult(usernamesOrEmails, user, userHighestTopRole);
         if (Objects.isNull(deletionResult.getMapOfErrors())) {
             if (!deletionResult.getUsersToDelete().isEmpty()) {
@@ -261,7 +266,7 @@ public class AdminService {
 
     public ResponseEntity<Map<String, Object>> deleteUsersHard(Set<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
-        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+        var userHighestTopRole = getUserHighestTopRole(user);
         if (unleash.isEnabled(FeatureFlags.ALLOW_HARD_DELETE_USERS.name()) || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
             if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_HARD_DELETE_USERS_BY_USERS_HAVE_PERMISSION_TO_DELETE_USERS.name()))
                 throw new ServiceUnavailableException("Hard deletion of users is currently disabled. Please try again later");
@@ -292,7 +297,7 @@ public class AdminService {
 
     public ResponseEntity<Map<String, Object>> getUsers(Set<String> usernamesOrEmails) {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
-        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+        var userHighestTopRole = getUserHighestTopRole(user);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_READ_USERS.name());
         if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
             if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_READ_USERS_BY_USERS_HAVE_PERMISSION_TO_READ_USERS.name()))
@@ -337,7 +342,7 @@ public class AdminService {
 
     public ResponseEntity<Map<String, Object>> updateUsers(Set<UserUpdationDto> dtos) {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
-        var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
+        var userHighestTopRole = getUserHighestTopRole(user);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_UPDATE_USERS.name());
         if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
             if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_UPDATE_USERS_BY_USERS_HAVE_PERMISSION_TO_UPDATE_USERS.name()))

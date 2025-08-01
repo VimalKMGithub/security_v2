@@ -8,10 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.vimal.security.v2.dtos.ResolvedRolesResultDto;
-import org.vimal.security.v2.dtos.UserCreationDto;
-import org.vimal.security.v2.dtos.UserDeletionResultDto;
-import org.vimal.security.v2.dtos.UserUpdationDto;
+import org.vimal.security.v2.dtos.*;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.enums.SystemRoles;
 import org.vimal.security.v2.exceptions.BadRequestException;
@@ -61,38 +58,12 @@ public class AdminService {
         if (entryCheck(variant, creatorHighestTopRole)) {
             checkUserCanCreateUsers(creatorHighestTopRole);
             validateDtosSizeForUsersCreation(variant, dtos);
-            var invalidInputs = new HashSet<String>();
-            var roles = new HashSet<String>();
-            var duplicateUsernamesInDtos = new HashSet<String>();
-            var duplicateEmailsInDtos = new HashSet<String>();
-            var usernames = new HashSet<String>();
-            var emails = new HashSet<String>();
-            dtos.remove(null);
-            dtos.forEach(dto -> {
-                var invalidInputsForThisDto = UserUtility.validateInputs(dto);
-                if (!invalidInputsForThisDto.isEmpty()) invalidInputs.addAll(invalidInputsForThisDto);
-                if (dto.getUsername() != null && ValidationUtility.USERNAME_PATTERN.matcher(dto.getUsername()).matches() && !usernames.add(dto.getUsername()))
-                    duplicateUsernamesInDtos.add(dto.getUsername());
-                if (dto.getEmail() != null && ValidationUtility.EMAIL_PATTERN.matcher(dto.getEmail()).matches() && !emails.add(dto.getEmail()))
-                    duplicateEmailsInDtos.add(dto.getEmail());
-                if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
-                    dto.setRoles(dto.getRoles().stream().filter(r -> r != null && !r.isBlank()).collect(Collectors.toSet()));
-                    if (!dto.getRoles().isEmpty()) roles.addAll(dto.getRoles());
-                }
-            });
-            var mapOfErrors = new HashMap<String, Object>();
-            if (!invalidInputs.isEmpty()) mapOfErrors.put("invalid_inputs", invalidInputs);
-            if (!duplicateUsernamesInDtos.isEmpty())
-                mapOfErrors.put("duplicate_usernames_in_request", duplicateUsernamesInDtos);
-            if (!duplicateEmailsInDtos.isEmpty())
-                mapOfErrors.put("duplicate_emails_in_request", duplicateEmailsInDtos);
-            var notAllowedToAssignRoles = validateRolesRestriction(roles, creatorHighestTopRole);
-            if (!notAllowedToAssignRoles.isEmpty())
-                mapOfErrors.put("not_allowed_to_assign_roles", notAllowedToAssignRoles);
+            var userCreationResult = validateInputs(dtos);
+            var mapOfErrors = errorsStuffingIfAny(userCreationResult, creatorHighestTopRole);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
-            var alreadyTakenUsernames = userRepo.findByUsernameIn(usernames).stream().map(UserModel::getUsername).collect(Collectors.toSet());
-            var alreadyTakenEmails = userRepo.findByEmailIn(emails).stream().map(UserModel::getEmail).collect(Collectors.toSet());
-            var resolvedRolesResult = resolveRoles(roles);
+            var alreadyTakenUsernames = userRepo.findByUsernameIn(userCreationResult.getUsernames()).stream().map(UserModel::getUsername).collect(Collectors.toSet());
+            var alreadyTakenEmails = userRepo.findByEmailIn(userCreationResult.getEmails()).stream().map(UserModel::getEmail).collect(Collectors.toSet());
+            var resolvedRolesResult = resolveRoles(userCreationResult.getRoles());
             if (!alreadyTakenUsernames.isEmpty()) mapOfErrors.put("already_taken_usernames", alreadyTakenUsernames);
             if (!alreadyTakenEmails.isEmpty()) mapOfErrors.put("already_taken_emails", alreadyTakenEmails);
             if (!resolvedRolesResult.getMissingRoles().isEmpty())
@@ -144,6 +115,44 @@ public class AdminService {
                 throw new BadRequestException("Cannot create more than " + maxUsersToCreateAtATime + " users at a time");
         } else if (dtos.size() > DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME)
             throw new BadRequestException("Cannot create more than " + DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME + " users at a time");
+    }
+
+    private UserCreationResultDto validateInputs(Set<UserCreationDto> dtos) {
+        var invalidInputs = new HashSet<String>();
+        var roles = new HashSet<String>();
+        var duplicateUsernamesInDtos = new HashSet<String>();
+        var duplicateEmailsInDtos = new HashSet<String>();
+        var usernames = new HashSet<String>();
+        var emails = new HashSet<String>();
+        dtos.remove(null);
+        dtos.forEach(dto -> {
+            var invalidInputsForThisDto = UserUtility.validateInputs(dto);
+            if (!invalidInputsForThisDto.isEmpty()) invalidInputs.addAll(invalidInputsForThisDto);
+            if (dto.getUsername() != null && ValidationUtility.USERNAME_PATTERN.matcher(dto.getUsername()).matches() && !usernames.add(dto.getUsername()))
+                duplicateUsernamesInDtos.add(dto.getUsername());
+            if (dto.getEmail() != null && ValidationUtility.EMAIL_PATTERN.matcher(dto.getEmail()).matches() && !emails.add(dto.getEmail()))
+                duplicateEmailsInDtos.add(dto.getEmail());
+            if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
+                dto.setRoles(dto.getRoles().stream().filter(r -> r != null && !r.isBlank()).collect(Collectors.toSet()));
+                if (!dto.getRoles().isEmpty()) roles.addAll(dto.getRoles());
+            }
+        });
+        return new UserCreationResultDto(invalidInputs, usernames, emails, duplicateUsernamesInDtos, duplicateEmailsInDtos, roles);
+    }
+
+    private Map<String, Object> errorsStuffingIfAny(UserCreationResultDto userCreationResult,
+                                                    String userHighestTopRole) {
+        var mapOfErrors = new HashMap<String, Object>();
+        if (!userCreationResult.getInvalidInputs().isEmpty())
+            mapOfErrors.put("invalid_inputs", userCreationResult.getInvalidInputs());
+        if (!userCreationResult.getDuplicateUsernamesInDtos().isEmpty())
+            mapOfErrors.put("duplicate_usernames_in_request", userCreationResult.getDuplicateUsernamesInDtos());
+        if (!userCreationResult.getDuplicateEmailsInDtos().isEmpty())
+            mapOfErrors.put("duplicate_emails_in_request", userCreationResult.getDuplicateEmailsInDtos());
+        var notAllowedToAssignRoles = validateRolesRestriction(userCreationResult.getRoles(), userHighestTopRole);
+        if (!notAllowedToAssignRoles.isEmpty())
+            mapOfErrors.put("not_allowed_to_assign_roles", notAllowedToAssignRoles);
+        return mapOfErrors;
     }
 
     private Collection<String> validateRolesRestriction(Collection<String> roles,

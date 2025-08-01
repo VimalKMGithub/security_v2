@@ -8,14 +8,14 @@ import org.vimal.security.v2.models.UserModel;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Collection;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class UserDetailsImpl implements UserDetails {
     @Getter
     private final UserModel userModel;
-    private final Collection<? extends GrantedAuthority> authorities;
+    private final Set<? extends GrantedAuthority> authorities;
 
     public UserDetailsImpl(UserModel userModel) {
         this.userModel = userModel;
@@ -23,17 +23,17 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     public UserDetailsImpl(UserModel userModel,
-                           Collection<? extends GrantedAuthority> authorities) {
+                           Set<? extends GrantedAuthority> authorities) {
         this.userModel = userModel;
         this.authorities = authorities;
     }
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
+    public Set<? extends GrantedAuthority> getAuthorities() {
         return authorities;
     }
 
-    private Collection<? extends GrantedAuthority> computeAuthorities(UserModel user) {
+    private Set<? extends GrantedAuthority> computeAuthorities(UserModel user) {
         return user.getRoles().stream()
                 .flatMap(role -> Stream.concat(
                         Stream.of(new SimpleGrantedAuthority(role.getRoleName())),

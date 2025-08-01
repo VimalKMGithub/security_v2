@@ -105,7 +105,7 @@ public class UserModel {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
-    @Column(name = "password_changed_at")
+    @Column(name = "password_changed_at", nullable = false)
     private Instant passwordChangedAt;
 
     @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

@@ -486,7 +486,7 @@ public class UserService {
             if (!passwordEncoder.matches(password, user.getPassword()))
                 throw new BadRequestException("Invalid password");
             jwtUtility.revokeTokens(user);
-            user.recordAccountDeletion("SELF");
+            user.recordAccountDeletion(true, "SELF");
             userRepo.save(user);
             mailService.sendAccountDeletionConfirmationAsync(user.getEmail(), "Account deletion confirmation");
             return ResponseEntity.ok(Map.of("message", "Account deleted successfully"));
@@ -540,7 +540,7 @@ public class UserService {
             if (!passwordEncoder.matches(password, user.getPassword()))
                 throw new BadRequestException("Invalid password");
             jwtUtility.revokeTokens(user);
-            user.recordAccountDeletion("SELF");
+            user.recordAccountDeletion(true, "SELF");
             userRepo.save(user);
             redisService.delete(encryptedEmailOTPToDeleteAccountKey);
             mailService.sendAccountDeletionConfirmationAsync(user.getEmail(), "Account deletion confirmation");
@@ -562,7 +562,7 @@ public class UserService {
             if (!passwordEncoder.matches(password, user.getPassword()))
                 throw new BadRequestException("Invalid password");
             jwtUtility.revokeTokens(user);
-            user.recordAccountDeletion("SELF");
+            user.recordAccountDeletion(true, "SELF");
             userRepo.save(user);
             mailService.sendAccountDeletionConfirmationAsync(user.getEmail(), "Account deletion confirmation");
             return Map.of("message", "Account deleted successfully");

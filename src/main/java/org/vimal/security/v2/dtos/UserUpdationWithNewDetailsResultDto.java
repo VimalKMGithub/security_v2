@@ -17,6 +17,4 @@ public class UserUpdationWithNewDetailsResultDto {
     private Map<String, Object> mapOfErrors;
     private Collection<UserModel> updatedUsers;
     private Collection<UserModel> usersToWhichWeHaveToRevokeTokens;
-    private Collection<String> notFoundUsers;
-    private Collection<String> rolesOfUsersToUpdate;
 }

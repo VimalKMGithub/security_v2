@@ -195,8 +195,8 @@ public class AdminService {
                 .createdBy(creator.getUsername())
                 .updatedBy(creator.getUsername())
                 .accountDeleted(dto.isAccountDeleted())
-                .accountDeletedAt(dto.isAccountDeleted() ? Instant.now() : null)
-                .deletedBy(dto.isAccountDeleted() ? creator.getUsername() : null)
+                .lastAccountDeletedAt(dto.isAccountDeleted() ? Instant.now() : null)
+                .lastDeletedUndeletedBy(dto.isAccountDeleted() ? creator.getUsername() : null)
                 .build();
     }
 
@@ -296,7 +296,7 @@ public class AdminService {
             }
             if (!userToDelete.getRoles().isEmpty())
                 userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
-            userToDelete.recordAccountDeletion(user.getUsername());
+            userToDelete.recordAccountDeletion(true, user.getUsername());
             usersToDelete.add(userToDelete);
         });
         foundByEmails.forEach(userToDelete -> {
@@ -309,7 +309,7 @@ public class AdminService {
             }
             if (!userToDelete.getRoles().isEmpty())
                 userToDelete.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
-            userToDelete.recordAccountDeletion(user.getUsername());
+            userToDelete.recordAccountDeletion(true, user.getUsername());
             usersToDelete.add(userToDelete);
         });
         return new UserDeletionResultDto(errorsStuffingIfAnyInInput(userDeletionInputResult, rolesOfUsers, userHighestTopRole), usersToDelete, softDeletedUsers, rolesOfSoftDeletedUsers);
@@ -414,11 +414,11 @@ public class AdminService {
             throw new BadRequestException("Cannot read more than " + DEFAULT_MAX_USERS_TO_READ_AT_A_TIME + " users at a time");
     }
 
-    public ResponseEntity<Map<String, Object>> updateUser(UserUpdationDto dto) {
+    public ResponseEntity<Map<String, Object>> updateUser(UserUpdationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return updateUsers(Set.of(dto));
     }
 
-    public ResponseEntity<Map<String, Object>> updateUsers(Set<UserUpdationDto> dtos) {
+    public ResponseEntity<Map<String, Object>> updateUsers(Set<UserUpdationDto> dtos) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = getUserHighestTopRole(user);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_UPDATE_USERS.name());
@@ -431,11 +431,16 @@ public class AdminService {
             var conflictingUsernamesEmailsResult = getConflictingUsernamesEmails(userUpdationResult, dtos);
             mapOfErrors = errorsStuffingIfAnyInUserUpdation(conflictingUsernamesEmailsResult);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
-            var resolvedRolesResult = resolveRoles(userUpdationResult.getRoles());
-            if (!resolvedRolesResult.getMissingRoles().isEmpty())
-                mapOfErrors.put("missing_roles", resolvedRolesResult.getMissingRoles());
-            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
-            var usersToUpdate = userRepo.findByUsernameIn(userUpdationResult.getOldUsernames());
+            var userUpdationWithNewDetailsResult = getResultOfUserUpdationWithNewDetails(userUpdationResult, dtos, user, userHighestTopRole);
+            if (!userUpdationWithNewDetailsResult.getMapOfErrors().isEmpty())
+                return ResponseEntity.badRequest().body(userUpdationWithNewDetailsResult.getMapOfErrors());
+            if (userUpdationWithNewDetailsResult.getUpdatedUsers().isEmpty() && userUpdationWithNewDetailsResult.getUsersToWhichWeHaveToRevokeTokens().isEmpty())
+                return ResponseEntity.ok(Map.of("message", "No users updated"));
+            if (!userUpdationWithNewDetailsResult.getUsersToWhichWeHaveToRevokeTokens().isEmpty()) {
+                jwtUtility.revokeTokens(userUpdationWithNewDetailsResult.getUsersToWhichWeHaveToRevokeTokens());
+                userUpdationWithNewDetailsResult.getUpdatedUsers().addAll(userUpdationWithNewDetailsResult.getUsersToWhichWeHaveToRevokeTokens());
+            }
+            return ResponseEntity.ok(Map.of("message", "Users updated successfully", "updated_users", userRepo.saveAll(userUpdationWithNewDetailsResult.getUpdatedUsers()).stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
         }
         throw new ServiceUnavailableException("Updating users is currently disabled. Please try again later");
     }
@@ -582,5 +587,97 @@ public class AdminService {
         if (!conflictingUsernamesEmailsResult.getConflictingEmails().isEmpty())
             mapOfErrors.put("conflicting_emails", conflictingUsernamesEmailsResult.getConflictingEmails());
         return mapOfErrors;
+    }
+
+    private UserUpdationWithNewDetailsResultDto getResultOfUserUpdationWithNewDetails(UserUpdationResultDto userUpdationResult,
+                                                                                      Set<UserUpdationDto> dtos,
+                                                                                      UserDetailsImpl user,
+                                                                                      String userHighestTopRole) {
+        var resolvedRolesResult = resolveRoles(userUpdationResult.getRoles());
+        var roleToRolenameMap = resolvedRolesResult.getRoles().stream().collect(Collectors.toMap(RoleModel::getRoleName, Function.identity()));
+        var userToUsernameMap = userRepo.findByUsernameIn(userUpdationResult.getOldUsernames()).stream().collect(Collectors.toMap(UserModel::getUsername, Function.identity()));
+        var updatedUsers = new HashSet<UserModel>();
+        var usersToWhichWeHaveToRevokeTokens = new HashSet<UserModel>();
+        var notFoundUsers = new HashSet<String>();
+        var rolesOfUsers = new HashSet<String>();
+        dtos.forEach(dto -> {
+            var userToUpdate = userToUsernameMap.get(dto.getOldUsername());
+            if (Objects.isNull(userToUpdate)) {
+                notFoundUsers.add(dto.getOldUsername());
+                return;
+            }
+            var isUpdated = false;
+            var shouldRemoveTokens = false;
+            if (dto.getUsername() != null && !dto.getUsername().equals(userToUpdate.getUsername())) {
+                userToUpdate.setUsername(dto.getUsername());
+                isUpdated = true;
+                shouldRemoveTokens = true;
+            }
+            if (dto.getEmail() != null && !dto.getEmail().equals(userToUpdate.getEmail())) {
+                userToUpdate.setEmail(dto.getEmail());
+                userToUpdate.setRealEmail(dto.getEmail());
+                isUpdated = true;
+                shouldRemoveTokens = true;
+            }
+            if (dto.getPassword() != null) {
+                userToUpdate.changePassword(passwordEncoder.encode(dto.getPassword()));
+                isUpdated = true;
+            }
+            if (!userToUpdate.getRoles().isEmpty())
+                userToUpdate.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
+            if (dto.getRoles() != null) {
+                var rolesToAssign = dto.getRoles().stream().map(roleToRolenameMap::get).filter(Objects::nonNull).collect(Collectors.toSet());
+                if (!userToUpdate.getRoles().equals(rolesToAssign)) {
+                    userToUpdate.setRoles(rolesToAssign);
+                    isUpdated = true;
+                    shouldRemoveTokens = true;
+                }
+            }
+            if (dto.getFirstName() != null && !dto.getFirstName().equals(userToUpdate.getFirstName())) {
+                userToUpdate.setFirstName(dto.getFirstName());
+                isUpdated = true;
+            }
+            if (dto.getMiddleName() != null && !dto.getMiddleName().equals(userToUpdate.getMiddleName())) {
+                userToUpdate.setMiddleName(dto.getMiddleName());
+                isUpdated = true;
+            }
+            if (dto.getLastName() != null && !dto.getLastName().equals(userToUpdate.getLastName())) {
+                userToUpdate.setLastName(dto.getLastName());
+                isUpdated = true;
+            }
+            if (dto.isEmailVerified() != userToUpdate.isEmailVerified()) {
+                userToUpdate.setEmailVerified(dto.isEmailVerified());
+                isUpdated = true;
+                shouldRemoveTokens = true;
+            }
+            if (dto.isAccountEnabled() != userToUpdate.isAccountEnabled()) {
+                userToUpdate.setAccountEnabled(dto.isAccountEnabled());
+                isUpdated = true;
+                shouldRemoveTokens = true;
+            }
+            if (dto.isAccountLocked() != userToUpdate.isAccountLocked()) {
+                userToUpdate.recordLockedStatus(dto.isAccountLocked());
+                isUpdated = true;
+                shouldRemoveTokens = true;
+            }
+            if (dto.isAccountDeleted() != userToUpdate.isAccountDeleted()) {
+                userToUpdate.recordAccountDeletion(true, user.getUsername());
+                isUpdated = true;
+                shouldRemoveTokens = true;
+            }
+            if (isUpdated) {
+                userToUpdate.setUpdatedBy(user.getUsername());
+                if (shouldRemoveTokens) usersToWhichWeHaveToRevokeTokens.add(userToUpdate);
+                else updatedUsers.add(userToUpdate);
+            }
+        });
+        var mapOfErrors = new HashMap<String, Object>();
+        if (!notFoundUsers.isEmpty()) mapOfErrors.put("users_not_found", notFoundUsers);
+        if (!rolesOfUsers.isEmpty()) {
+            var notAllowedToAssignRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);
+            if (!notAllowedToAssignRoles.isEmpty())
+                mapOfErrors.put("not_allowed_to_assign_roles", notAllowedToAssignRoles);
+        }
+        return new UserUpdationWithNewDetailsResultDto(mapOfErrors, updatedUsers, usersToWhichWeHaveToRevokeTokens);
     }
 }

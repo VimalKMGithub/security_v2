@@ -75,17 +75,18 @@ public class UserModel {
     private boolean accountDeleted = false;
 
     @JsonIgnore
-    @Column(name = "account_deleted_at")
-    private Instant accountDeletedAt;
+    @Column(name = "last_account_deleted_at")
+    private Instant lastAccountDeletedAt;
 
     @JsonIgnore
-    @Column(name = "deleted_by", length = 100)
-    private String deletedBy;
+    @Column(name = "last_deleted_undeleted_by", length = 100)
+    private String lastDeletedUndeletedBy;
 
-    public void recordAccountDeletion(String deletedBy) {
-        this.accountDeleted = true;
-        this.accountDeletedAt = Instant.now();
-        this.deletedBy = deletedBy;
+    public void recordAccountDeletion(boolean deleted,
+                                      String deletedUndeletedBy) {
+        this.accountDeleted = deleted;
+        if (deleted) this.lastAccountDeletedAt = Instant.now();
+        this.lastDeletedUndeletedBy = deletedUndeletedBy;
     }
 
     @Builder.Default
@@ -185,6 +186,13 @@ public class UserModel {
     public void changePassword(String newPassword) {
         this.password = newPassword;
         this.passwordChangedAt = Instant.now();
+        this.failedLoginAttempts = 0;
+        this.failedMfaAttempts = 0;
+    }
+
+    public void recordLockedStatus(boolean locked) {
+        this.accountLocked = locked;
+        this.lastLockedAt = locked ? Instant.now() : null;
         this.failedLoginAttempts = 0;
         this.failedMfaAttempts = 0;
     }

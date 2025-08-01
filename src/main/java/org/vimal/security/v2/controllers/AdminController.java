@@ -74,13 +74,13 @@ public class AdminController {
 
     @PutMapping("/update/user")
     @PreAuthorize("@PreAuth.canUpdateUsers()")
-    public ResponseEntity<Map<String, Object>> updateUser(@RequestBody UserUpdationDto dto) {
+    public ResponseEntity<Map<String, Object>> updateUser(@RequestBody UserUpdationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return adminService.updateUser(dto);
     }
 
     @PutMapping("/update/users")
     @PreAuthorize("@PreAuth.canUpdateUsers()")
-    public ResponseEntity<Map<String, Object>> updateUsers(@RequestBody Set<UserUpdationDto> dtos) {
+    public ResponseEntity<Map<String, Object>> updateUsers(@RequestBody Set<UserUpdationDto> dtos) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return adminService.updateUsers(dtos);
     }
 }

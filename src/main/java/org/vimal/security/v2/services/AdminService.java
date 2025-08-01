@@ -70,9 +70,11 @@ public class AdminService {
             var duplicateEmailsInDtos = new HashSet<String>();
             var usernames = new HashSet<String>();
             var emails = new HashSet<String>();
-            var nonNullDtos = new HashSet<UserCreationDto>();
             dtos.forEach(dto -> {
-                if (Objects.isNull(dto)) return;
+                if (Objects.isNull(dto)) {
+                    dtos.remove(dto);
+                    return;
+                }
                 var invalidInputsForThisDto = InputValidationUtility.validateInputs(dto);
                 if (!invalidInputsForThisDto.isEmpty()) invalidInputs.addAll(invalidInputsForThisDto);
                 if (dto.getUsername() != null && ValidationUtility.USERNAME_PATTERN.matcher(dto.getUsername()).matches() && !usernames.add(dto.getUsername()))
@@ -83,7 +85,6 @@ public class AdminService {
                     dto.setRoles(dto.getRoles().stream().filter(r -> r != null && !r.isBlank()).collect(Collectors.toSet()));
                     if (!dto.getRoles().isEmpty()) roles.addAll(dto.getRoles());
                 }
-                nonNullDtos.add(dto);
             });
             var mapOfErrors = new HashMap<String, Object>();
             if (!invalidInputs.isEmpty()) mapOfErrors.put("invalid_inputs", invalidInputs);
@@ -103,9 +104,9 @@ public class AdminService {
             if (!resolvedRolesResult.getMissingRoles().isEmpty())
                 mapOfErrors.put("missing_roles", resolvedRolesResult.getMissingRoles());
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
-            if (nonNullDtos.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "No users to create"));
+            if (dtos.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "No users to create"));
             var resolvedRolesMap = resolvedRolesResult.getRoles().stream().collect(Collectors.toMap(RoleModel::getRoleName, Function.identity()));
-            var newUsers = nonNullDtos.stream().map(dto -> {
+            var newUsers = dtos.stream().map(dto -> {
                         if (Objects.isNull(dto.getRoles()) || dto.getRoles().isEmpty())
                             return toUserModel(dto, new HashSet<>(), creator.getUserModel());
                         var rolesToAssign = dto.getRoles().stream().map(resolvedRolesMap::get).filter(Objects::nonNull).collect(Collectors.toSet());
@@ -352,6 +353,53 @@ public class AdminService {
                     throw new BadRequestException("Cannot update more than " + maxUsersToUpdateAtATime + " users at a time");
             } else if (dtos.size() > DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME)
                 throw new BadRequestException("Cannot update more than " + DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME + " users at a time");
+            var invalidIdentifiers = new HashSet<String>();
+            var usernames = new HashSet<String>();
+            var emails = new HashSet<String>();
+            var roles = new HashSet<String>();
+            var duplicateUsernamesInDtos = new HashSet<String>();
+            var duplicateEmailsInDtos = new HashSet<String>();
+            var usernameIdentifiers = new HashSet<String>();
+            var emailIdentifiers = new HashSet<String>();
+            var duplicateIdentifiers = new HashSet<String>();
+            var nonNullDtos = new HashSet<UserUpdationDto>();
+            var invalidInputs = new HashSet<String>();
+            dtos.forEach(dto -> {
+                if (Objects.isNull(dto)) return;
+                try {
+                    ValidationUtility.validateStringNonNullAndNotEmpty(dto.getOldUsernameOrEmail(), "Username/email");
+                    if (ValidationUtility.USERNAME_PATTERN.matcher(dto.getOldUsernameOrEmail()).matches() && !usernameIdentifiers.add(dto.getOldUsernameOrEmail()))
+                        duplicateIdentifiers.add(dto.getOldUsernameOrEmail());
+                    else if (ValidationUtility.EMAIL_PATTERN.matcher(dto.getOldUsernameOrEmail()).matches() && !emailIdentifiers.add(dto.getOldUsernameOrEmail()))
+                        duplicateIdentifiers.add(dto.getOldUsernameOrEmail());
+                    else invalidIdentifiers.add(dto.getOldUsernameOrEmail());
+                } catch (BadRequestException ex) {
+                    invalidIdentifiers.add(dto.getOldUsernameOrEmail());
+                }
+                if (dto.getUsername() != null) {
+                    try {
+                        ValidationUtility.validateUsername(dto.getUsername());
+                        if (!usernames.add(dto.getUsername())) duplicateUsernamesInDtos.add(dto.getUsername());
+                    } catch (BadRequestException ex) {
+                        invalidInputs.add(ex.getMessage());
+                    }
+                }
+                if (dto.getEmail() != null) {
+                    try {
+                        ValidationUtility.validateEmail(dto.getEmail());
+                        if (!emails.add(dto.getEmail())) duplicateEmailsInDtos.add(dto.getEmail());
+                    } catch (BadRequestException ex) {
+                        invalidInputs.add(ex.getMessage());
+                    }
+                }
+                if (dto.getPassword() != null) {
+                    try {
+                        ValidationUtility.validatePassword(dto.getPassword());
+                    } catch (BadRequestException ex) {
+                        invalidInputs.add(ex.getMessage());
+                    }
+                }
+            });
         }
         throw new ServiceUnavailableException("Updating users is currently disabled. Please try again later");
     }

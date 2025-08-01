@@ -8,6 +8,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -137,7 +138,7 @@ public class UserModel {
         var now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;
-        if (this.passwordChangedAt == null) {
+        if (Objects.isNull(this.passwordChangedAt)) {
             this.passwordChangedAt = now;
         }
     }

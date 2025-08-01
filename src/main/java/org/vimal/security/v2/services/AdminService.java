@@ -89,7 +89,7 @@ public class AdminService {
         return getUserHighestTopRole(userDetails.getAuthorities());
     }
 
-    private String getUserHighestTopRole(Collection<? extends GrantedAuthority> authorities) {
+    private String getUserHighestTopRole(Set<? extends GrantedAuthority> authorities) {
         return authorities.stream()
                 .map(GrantedAuthority::getAuthority)
                 .filter(SystemRoles.TOP_ROLES::contains)
@@ -108,7 +108,7 @@ public class AdminService {
     }
 
     private void validateDtosSizeForUsersCreation(Variant variant,
-                                                  Collection<UserCreationDto> dtos) {
+                                                  Set<UserCreationDto> dtos) {
         if (dtos.isEmpty()) throw new BadRequestException("No users to create");
         if (variant.isEnabled() && variant.getPayload().isPresent()) {
             var maxUsersToCreateAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
@@ -157,8 +157,8 @@ public class AdminService {
         return mapOfErrors;
     }
 
-    private Collection<String> validateRolesRestriction(Collection<String> roles,
-                                                        String assignerTopRole) {
+    private Set<String> validateRolesRestriction(Set<String> roles,
+                                                 String assignerTopRole) {
         var restrictedRoles = new HashSet<String>();
         if (SystemRoles.TOP_ROLES.getFirst().equals(assignerTopRole) || Objects.isNull(roles) || roles.isEmpty())
             return restrictedRoles;
@@ -170,7 +170,7 @@ public class AdminService {
         return restrictedRoles;
     }
 
-    private ResolvedRolesResultDto resolveRoles(Collection<String> roles) {
+    private ResolvedRolesResultDto resolveRoles(Set<String> roles) {
         if (Objects.isNull(roles) || roles.isEmpty())
             return new ResolvedRolesResultDto(new HashSet<>(), new HashSet<>());
         var foundRoles = roleRepo.findAllById(roles);
@@ -179,7 +179,7 @@ public class AdminService {
     }
 
     private UserModel toUserModel(UserCreationDto dto,
-                                  Collection<RoleModel> roles,
+                                  Set<RoleModel> roles,
                                   UserModel creator) {
         return UserModel.builder()
                 .username(dto.getUsername())
@@ -244,7 +244,7 @@ public class AdminService {
     }
 
     private void validateInputsSizeForUsersDeletion(Variant variant,
-                                                    Collection<String> usernamesOrEmails) {
+                                                    Set<String> usernamesOrEmails) {
         if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to delete");
         if (variant.isEnabled() && variant.getPayload().isPresent()) {
             var maxUsersToDeleteAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
@@ -320,7 +320,7 @@ public class AdminService {
     }
 
     private Map<String, Object> errorsStuffingIfAnyInInput(UserDeletionReadInputResultDto userDeletionInputResult,
-                                                           Collection<String> rolesOfUsers,
+                                                           Set<String> rolesOfUsers,
                                                            String userHighestTopRole) {
         var mapOfErrors = new HashMap<String, Object>();
         if (!userDeletionInputResult.getEmails().isEmpty())
@@ -411,7 +411,7 @@ public class AdminService {
     }
 
     private void validateInputsSizeForUsersToRead(Variant variant,
-                                                  Collection<String> usernamesOrEmails) {
+                                                  Set<String> usernamesOrEmails) {
         if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to read");
         if (variant.isEnabled() && variant.getPayload().isPresent()) {
             var maxUsersToReadAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
@@ -461,7 +461,7 @@ public class AdminService {
     }
 
     private void validateDtosSizeForUsersToUpdate(Variant variant,
-                                                  Collection<UserUpdationDto> dtos) {
+                                                  Set<UserUpdationDto> dtos) {
         if (dtos.isEmpty()) throw new BadRequestException("No users to update");
         if (variant.isEnabled() && variant.getPayload().isPresent()) {
             var maxUsersToUpdateAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));

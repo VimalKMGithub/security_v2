@@ -585,7 +585,7 @@ public class AdminService {
         }).map(UserModel::getUsername).collect(Collectors.toSet());
         var conflictingEmails = usersFoundByEmails.stream().filter(u -> {
             var requesterForEmail = dtosEmailToOldUsernameMap.get(u.getEmail());
-            return requesterForEmail != null && !u.getEmail().equals(requesterForEmail);
+            return requesterForEmail != null && !u.getUsername().equals(requesterForEmail);
         }).map(UserModel::getEmail).collect(Collectors.toSet());
         return new ConflictingUsernamesEmailsResultDto(conflictingUsernames, conflictingEmails);
     }

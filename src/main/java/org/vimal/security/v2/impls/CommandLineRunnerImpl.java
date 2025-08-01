@@ -18,6 +18,7 @@ import org.vimal.security.v2.repos.RoleRepo;
 import org.vimal.security.v2.repos.UserRepo;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -69,7 +70,7 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
         var roleModel = roleRepo.findById(role).orElseThrow(() -> new RuntimeException("Role not found: " + role));
         var permissionModels = permissionRepo.findAllById(permissions);
         if (!permissionModels.isEmpty()) {
-            roleModel.setPermissions(permissionModels);
+            roleModel.setPermissions(new HashSet<>(permissionModels));
             roleModel.setUpdatedBy("SYSTEM");
             roleRepo.save(roleModel);
         }
@@ -92,7 +93,7 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
                     .username(username)
                     .firstName(firstName)
                     .password(passwordEncoder.encode(password))
-                    .roles(roleRepo.findAllById(roleNames))
+                    .roles(new HashSet<>(roleRepo.findAllById(roleNames)))
                     .emailVerified(true)
                     .createdBy("SYSTEM")
                     .updatedBy("SYSTEM")

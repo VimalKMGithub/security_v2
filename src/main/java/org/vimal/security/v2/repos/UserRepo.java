@@ -5,8 +5,8 @@ import org.springframework.stereotype.Repository;
 import org.vimal.security.v2.models.RoleModel;
 import org.vimal.security.v2.models.UserModel;
 
-import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -21,13 +21,13 @@ public interface UserRepo extends JpaRepository<UserModel, UUID> {
 
     Optional<UserModel> findByEmail(String storedEmail);
 
-    Collection<UserModel> findByUsernameIn(Collection<String> usernames);
+    Set<UserModel> findByUsernameIn(Set<String> usernames);
 
-    Collection<UserModel> findByEmailIn(Collection<String> emails);
+    Set<UserModel> findByEmailIn(Set<String> emails);
 
     long countByRoles_RoleName(String roleName);
 
-    Collection<UserModel> findByRoles(RoleModel role);
+    Set<UserModel> findByRoles(RoleModel role);
 
-    Collection<UserModel> findByRolesIn(Collection<RoleModel> roles);
+    Set<UserModel> findByRolesIn(Set<RoleModel> roles);
 }

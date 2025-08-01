@@ -431,6 +431,10 @@ public class AdminService {
             var conflictingUsernamesEmailsResult = getConflictingUsernamesEmails(userUpdationResult, dtos);
             mapOfErrors = errorsStuffingIfAnyInUserUpdation(conflictingUsernamesEmailsResult);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            var resolvedRolesResult = resolveRoles(userUpdationResult.getRoles());
+            if (!resolvedRolesResult.getMissingRoles().isEmpty())
+                mapOfErrors.put("missing_roles", resolvedRolesResult.getMissingRoles());
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             var usersToUpdate = userRepo.findByUsernameIn(userUpdationResult.getOldUsernames());
         }
         throw new ServiceUnavailableException("Updating users is currently disabled. Please try again later");

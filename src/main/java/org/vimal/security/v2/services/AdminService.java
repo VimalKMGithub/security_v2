@@ -251,8 +251,8 @@ public class AdminService {
             throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_USERS_TO_DELETE_AT_A_TIME + " users at a time");
     }
 
-    private UserDeletionInputResultDto validateInput(Set<String> usernamesOrEmails,
-                                                     UserDetailsImpl user) {
+    private UserDeletionReadInputResultDto validateInput(Set<String> usernamesOrEmails,
+                                                         UserDetailsImpl user) {
         var invalidInputs = new HashSet<String>();
         var emails = new HashSet<String>();
         var usernames = new HashSet<String>();
@@ -265,10 +265,10 @@ public class AdminService {
         });
         if (usernames.contains(user.getUsername())) ownUserInInputs.add(user.getUsername());
         if (usernames.contains(user.getUserModel().getEmail())) ownUserInInputs.add(user.getUserModel().getEmail());
-        return new UserDeletionInputResultDto(invalidInputs, usernames, emails, ownUserInInputs);
+        return new UserDeletionReadInputResultDto(invalidInputs, usernames, emails, ownUserInInputs);
     }
 
-    private Map<String, Object> errorsStuffingIfAnyInInput(UserDeletionInputResultDto userDeletionInputResult) {
+    private Map<String, Object> errorsStuffingIfAnyInInput(UserDeletionReadInputResultDto userDeletionInputResult) {
         var mapOfErrors = new HashMap<String, Object>();
         if (!userDeletionInputResult.getInvalidInputs().isEmpty())
             mapOfErrors.put("invalid_inputs", userDeletionInputResult.getInvalidInputs());
@@ -277,7 +277,7 @@ public class AdminService {
         return mapOfErrors;
     }
 
-    private UserDeletionResultDto getUserDeletionResult(UserDeletionInputResultDto userDeletionInputResult,
+    private UserDeletionResultDto getUserDeletionResult(UserDeletionReadInputResultDto userDeletionInputResult,
                                                         UserDetailsImpl user,
                                                         String userHighestTopRole) {
         var foundByUsernames = userRepo.findByUsernameIn(userDeletionInputResult.getUsernames());
@@ -315,7 +315,7 @@ public class AdminService {
         return new UserDeletionResultDto(errorsStuffingIfAnyInInput(userDeletionInputResult, rolesOfUsers, userHighestTopRole), usersToDelete, softDeletedUsers, rolesOfSoftDeletedUsers);
     }
 
-    private Map<String, Object> errorsStuffingIfAnyInInput(UserDeletionInputResultDto userDeletionInputResult,
+    private Map<String, Object> errorsStuffingIfAnyInInput(UserDeletionReadInputResultDto userDeletionInputResult,
                                                            Collection<String> rolesOfUsers,
                                                            String userHighestTopRole) {
         var mapOfErrors = new HashMap<String, Object>();
@@ -375,25 +375,21 @@ public class AdminService {
         if (entryCheck(variant, userHighestTopRole)) {
             checkUserCanReadUsers(userHighestTopRole);
             validateInputsSizeForUsersToRead(variant, usernamesOrEmails);
-            var invalidInputs = new HashSet<String>();
-            var emails = new HashSet<String>();
-            var usernames = new HashSet<String>();
-            usernamesOrEmails.remove(null);
-            usernamesOrEmails.forEach(identifier -> {
-                if (ValidationUtility.USERNAME_PATTERN.matcher(identifier).matches()) usernames.add(identifier);
-                else if (ValidationUtility.EMAIL_PATTERN.matcher(identifier).matches()) emails.add(identifier);
-                else invalidInputs.add(identifier);
-            });
-            if (!invalidInputs.isEmpty()) ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
-            var foundByUsernames = userRepo.findByUsernameIn(usernames);
-            var foundByEmails = userRepo.findByEmailIn(emails);
+            var userReadsInputResult = validateInput(usernamesOrEmails, user);
+            var mapOfErrors = errorsStuffingIfAnyInInput(userReadsInputResult);
+            if (!mapOfErrors.isEmpty() && mapOfErrors.containsKey("invalid_inputs"))
+                return ResponseEntity.badRequest().body(Map.of("invalid_inputs", mapOfErrors.get("invalid_inputs")));
+            var foundByUsernames = userRepo.findByUsernameIn(userReadsInputResult.getUsernames());
+            var foundByEmails = userRepo.findByEmailIn(userReadsInputResult.getEmails());
             var foundByUsernamesUsernames = foundByUsernames.stream().map(UserModel::getUsername).collect(Collectors.toSet());
             var foundByEmailsEmails = foundByEmails.stream().map(UserModel::getEmail).collect(Collectors.toSet());
-            usernames.removeAll(foundByUsernamesUsernames);
-            emails.removeAll(foundByEmailsEmails);
-            var mapOfErrors = new HashMap<String, Object>();
-            if (!usernames.isEmpty()) mapOfErrors.put("users_not_found_with_usernames", usernames);
-            if (!emails.isEmpty()) mapOfErrors.put("users_not_found_with_emails", emails);
+            userReadsInputResult.getUsernames().removeAll(foundByUsernamesUsernames);
+            userReadsInputResult.getEmails().removeAll(foundByEmailsEmails);
+            mapOfErrors = new HashMap<>();
+            if (!userReadsInputResult.getUsernames().isEmpty())
+                mapOfErrors.put("users_not_found_with_usernames", userReadsInputResult.getUsernames());
+            if (!userReadsInputResult.getEmails().isEmpty())
+                mapOfErrors.put("users_not_found_with_emails", userReadsInputResult.getEmails());
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             foundByUsernames.addAll(foundByEmails);
             return ResponseEntity.ok(Map.of("message", "Users read successfully", "users", foundByUsernames.stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));

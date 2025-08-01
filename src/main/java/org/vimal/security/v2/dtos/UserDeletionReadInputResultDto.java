@@ -11,7 +11,7 @@ import java.util.Collection;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDeletionInputResultDto {
+public class UserDeletionReadInputResultDto {
     private Collection<String> invalidInputs;
     private Collection<String> usernames;
     private Collection<String> emails;

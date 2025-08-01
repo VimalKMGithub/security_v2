@@ -49,7 +49,7 @@ public class AdminService {
         return createUsers(Set.of(dto));
     }
 
-    public ResponseEntity<Map<String, Object>> createUsers(Collection<UserCreationDto> dtos) {
+    public ResponseEntity<Map<String, Object>> createUsers(Set<UserCreationDto> dtos) {
         var creator = UserUtility.getCurrentAuthenticatedUserDetails();
         var creatorHighestTopRole = UserUtility.getUserHighestTopRole(creator);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_CREATE_USERS.name());
@@ -164,7 +164,7 @@ public class AdminService {
         return deleteUsers(Set.of(usernameOrEmail));
     }
 
-    public ResponseEntity<Map<String, Object>> deleteUsers(Collection<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> deleteUsers(Set<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
         var deletionResult = deleteUsersResult(usernamesOrEmails, user, userHighestTopRole);
@@ -197,8 +197,8 @@ public class AdminService {
             var invalidInputs = new HashSet<String>();
             var emails = new HashSet<String>();
             var usernames = new HashSet<String>();
+            usernamesOrEmails.remove(null);
             usernamesOrEmails.forEach(identifier -> {
-                if (Objects.isNull(identifier)) return;
                 if (ValidationUtility.USERNAME_PATTERN.matcher(identifier).matches()) usernames.add(identifier);
                 else if (ValidationUtility.EMAIL_PATTERN.matcher(identifier).matches()) emails.add(identifier);
                 else invalidInputs.add(identifier);
@@ -259,7 +259,7 @@ public class AdminService {
         return deleteUsersHard(Set.of(usernameOrEmail));
     }
 
-    public ResponseEntity<Map<String, Object>> deleteUsersHard(Collection<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> deleteUsersHard(Set<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
         if (unleash.isEnabled(FeatureFlags.ALLOW_HARD_DELETE_USERS.name()) || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
@@ -290,7 +290,7 @@ public class AdminService {
         return getUsers(Set.of(usernameOrEmail));
     }
 
-    public ResponseEntity<Map<String, Object>> getUsers(Collection<String> usernamesOrEmails) {
+    public ResponseEntity<Map<String, Object>> getUsers(Set<String> usernamesOrEmails) {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_READ_USERS.name());
@@ -308,8 +308,8 @@ public class AdminService {
             var invalidInputs = new HashSet<String>();
             var emails = new HashSet<String>();
             var usernames = new HashSet<String>();
+            usernamesOrEmails.remove(null);
             usernamesOrEmails.forEach(identifier -> {
-                if (Objects.isNull(identifier)) return;
                 if (ValidationUtility.USERNAME_PATTERN.matcher(identifier).matches()) usernames.add(identifier);
                 else if (ValidationUtility.EMAIL_PATTERN.matcher(identifier).matches()) emails.add(identifier);
                 else invalidInputs.add(identifier);
@@ -335,7 +335,7 @@ public class AdminService {
         return updateUsers(Set.of(dto));
     }
 
-    public ResponseEntity<Map<String, Object>> updateUsers(Collection<UserUpdationDto> dtos) {
+    public ResponseEntity<Map<String, Object>> updateUsers(Set<UserUpdationDto> dtos) {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = UserUtility.getUserHighestTopRole(user);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_UPDATE_USERS.name());

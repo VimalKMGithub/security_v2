@@ -179,7 +179,7 @@ public class AdminService {
         return ResponseEntity.badRequest().body(deletionResult.getMapOfErrors());
     }
 
-    private UserDeletionResultDto deleteUsersResult(Collection<String> usernamesOrEmails,
+    private UserDeletionResultDto deleteUsersResult(Set<String> usernamesOrEmails,
                                                     UserDetailsImpl user,
                                                     String userHighestTopRole) {
         var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_USERS.name());
@@ -359,10 +359,9 @@ public class AdminService {
             var usernameIdentifiers = new HashSet<String>();
             var emailIdentifiers = new HashSet<String>();
             var duplicateIdentifiers = new HashSet<String>();
-            var nonNullDtos = new HashSet<UserUpdationDto>();
             var invalidInputs = new HashSet<String>();
+            dtos.remove(null);
             dtos.forEach(dto -> {
-                if (Objects.isNull(dto)) return;
                 try {
                     ValidationUtility.validateStringNonNullAndNotEmpty(dto.getOldUsernameOrEmail(), "Username/email");
                     if (ValidationUtility.USERNAME_PATTERN.matcher(dto.getOldUsernameOrEmail()).matches() && !usernameIdentifiers.add(dto.getOldUsernameOrEmail()))

@@ -350,27 +350,22 @@ public class AdminService {
                     throw new BadRequestException("Cannot update more than " + maxUsersToUpdateAtATime + " users at a time");
             } else if (dtos.size() > DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME)
                 throw new BadRequestException("Cannot update more than " + DEFAULT_MAX_USERS_TO_UPDATE_AT_A_TIME + " users at a time");
-            var invalidIdentifiers = new HashSet<String>();
+            var invalidOldUsernames = new HashSet<String>();
             var usernames = new HashSet<String>();
             var emails = new HashSet<String>();
             var roles = new HashSet<String>();
             var duplicateUsernamesInDtos = new HashSet<String>();
             var duplicateEmailsInDtos = new HashSet<String>();
-            var usernameIdentifiers = new HashSet<String>();
-            var emailIdentifiers = new HashSet<String>();
-            var duplicateIdentifiers = new HashSet<String>();
+            var oldUsernames = new HashSet<String>();
+            var duplicateOldUsernames = new HashSet<String>();
             var invalidInputs = new HashSet<String>();
             dtos.remove(null);
             dtos.forEach(dto -> {
                 try {
-                    ValidationUtility.validateStringNonNullAndNotEmpty(dto.getOldUsernameOrEmail(), "Username/email");
-                    if (ValidationUtility.USERNAME_PATTERN.matcher(dto.getOldUsernameOrEmail()).matches() && !usernameIdentifiers.add(dto.getOldUsernameOrEmail()))
-                        duplicateIdentifiers.add(dto.getOldUsernameOrEmail());
-                    else if (ValidationUtility.EMAIL_PATTERN.matcher(dto.getOldUsernameOrEmail()).matches() && !emailIdentifiers.add(dto.getOldUsernameOrEmail()))
-                        duplicateIdentifiers.add(dto.getOldUsernameOrEmail());
-                    else invalidIdentifiers.add(dto.getOldUsernameOrEmail());
+                    ValidationUtility.validateUsername(dto.getOldUsername());
+                    if (!oldUsernames.add(dto.getOldUsername())) duplicateOldUsernames.add(dto.getOldUsername());
                 } catch (BadRequestException ex) {
-                    invalidIdentifiers.add(dto.getOldUsernameOrEmail());
+                    invalidOldUsernames.add(dto.getOldUsername());
                 }
                 if (dto.getUsername() != null) {
                     try {
@@ -394,6 +389,10 @@ public class AdminService {
                     } catch (BadRequestException ex) {
                         invalidInputs.add(ex.getMessage());
                     }
+                }
+                if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
+                    dto.setRoles(dto.getRoles().stream().filter(r -> r != null && !r.isBlank()).collect(Collectors.toSet()));
+                    if (!dto.getRoles().isEmpty()) roles.addAll(dto.getRoles());
                 }
             });
         }

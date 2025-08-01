@@ -62,7 +62,7 @@ public class UserService {
                 throw new BadRequestException("Username: '" + dto.getUsername() + "' is already taken");
             if (userRepo.existsByEmail(dto.getEmail()))
                 throw new BadRequestException("Email: '" + dto.getEmail() + "' is already registered");
-            var sanitizedEmail = SanitizerUtility.sanitizeEmail(dto.getEmail());
+            var sanitizedEmail = sanitizeEmail(dto.getEmail());
             if (userRepo.existsByRealEmail(sanitizedEmail))
                 throw new BadRequestException("Alias version of email: '" + dto.getEmail() + "' is already registered");
             var user = toUserModel(dto, sanitizedEmail);
@@ -75,6 +75,22 @@ public class UserService {
             return ResponseEntity.ok(Map.of("message", "Registration successful", "user", userRepo.save(user)));
         }
         throw new ServiceUnavailableException("Registration is currently disabled. Please try again later");
+    }
+
+    private static final Collection<String> REMOVE_DOTS = Set.of("gmail.com", "googlemail.com");
+    private static final Collection<String> REMOVE_ALIAS_PART = Set.of("gmail.com", "googlemail.com", "live.com", "protonmail.com", "hotmail.com", "outlook.com");
+
+    public static String sanitizeEmail(String email) {
+        var lowerCasedEmail = email.trim().toLowerCase();
+        var atIndex = lowerCasedEmail.indexOf('@');
+        var local = lowerCasedEmail.substring(0, atIndex);
+        var domain = lowerCasedEmail.substring(atIndex + 1);
+        if (REMOVE_DOTS.contains(domain)) local = local.replace(".", "");
+        if (REMOVE_ALIAS_PART.contains(domain)) {
+            var plusIndex = local.indexOf('+');
+            if (plusIndex != -1) local = local.substring(0, plusIndex);
+        }
+        return local + "@" + domain;
     }
 
     private UserModel toUserModel(RegistrationDto dto, String sanitizedEmail) {
@@ -366,7 +382,7 @@ public class UserService {
                 throw new BadRequestException("New email cannot be same as current email");
             if (userRepo.existsByEmail(newEmail))
                 throw new BadRequestException("Email: '" + newEmail + "' is already registered");
-            var sanitizedEmail = SanitizerUtility.sanitizeEmail(newEmail);
+            var sanitizedEmail = sanitizeEmail(newEmail);
             if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
                 throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
             storeNewEmailForEmailChange(user, newEmail);
@@ -435,7 +451,7 @@ public class UserService {
                 throw new BadRequestException("New email cannot be same as current email");
             if (userRepo.existsByEmail(newEmail))
                 throw new BadRequestException("Email: '" + newEmail + "' is already registered");
-            var sanitizedEmail = SanitizerUtility.sanitizeEmail(newEmail);
+            var sanitizedEmail = sanitizeEmail(newEmail);
             if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
                 throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
             user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));

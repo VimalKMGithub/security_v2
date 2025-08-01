@@ -21,7 +21,10 @@ import org.vimal.security.v2.models.RoleModel;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.RoleRepo;
 import org.vimal.security.v2.repos.UserRepo;
-import org.vimal.security.v2.utils.*;
+import org.vimal.security.v2.utils.JWTUtility;
+import org.vimal.security.v2.utils.MapperUtility;
+import org.vimal.security.v2.utils.UserUtility;
+import org.vimal.security.v2.utils.ValidationUtility;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -66,7 +69,7 @@ public class AdminService {
             var emails = new HashSet<String>();
             dtos.remove(null);
             dtos.forEach(dto -> {
-                var invalidInputsForThisDto = InputValidationUtility.validateInputs(dto);
+                var invalidInputsForThisDto = UserUtility.validateInputs(dto);
                 if (!invalidInputsForThisDto.isEmpty()) invalidInputs.addAll(invalidInputsForThisDto);
                 if (dto.getUsername() != null && ValidationUtility.USERNAME_PATTERN.matcher(dto.getUsername()).matches() && !usernames.add(dto.getUsername()))
                     duplicateUsernamesInDtos.add(dto.getUsername());

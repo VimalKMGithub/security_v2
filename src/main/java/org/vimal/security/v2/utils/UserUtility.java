@@ -4,11 +4,15 @@ import io.getunleash.Unleash;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.vimal.security.v2.dtos.RegistrationDto;
 import org.vimal.security.v2.enums.FeatureFlags;
+import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.exceptions.ServiceUnavailableException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
 
 public class UserUtility {
@@ -44,6 +48,41 @@ public class UserUtility {
 
     public static UserModel getCurrentAuthenticatedUser() {
         return getCurrentAuthenticatedUserDetails().getUserModel();
+    }
+
+    public static Collection<String> validateInputs(RegistrationDto dto) {
+        var validationErrors = new HashSet<String>();
+        try {
+            ValidationUtility.validateUsername(dto.getUsername());
+        } catch (BadRequestException ex) {
+            validationErrors.add(ex.getMessage());
+        }
+        try {
+            ValidationUtility.validatePassword(dto.getPassword());
+        } catch (BadRequestException ex) {
+            validationErrors.add(ex.getMessage());
+        }
+        try {
+            ValidationUtility.validateEmail(dto.getEmail());
+        } catch (BadRequestException ex) {
+            validationErrors.add(ex.getMessage());
+        }
+        try {
+            ValidationUtility.validateFirstName(dto.getFirstName());
+        } catch (BadRequestException ex) {
+            validationErrors.add(ex.getMessage());
+        }
+        try {
+            ValidationUtility.validateMiddleName(dto.getMiddleName());
+        } catch (BadRequestException ex) {
+            validationErrors.add(ex.getMessage());
+        }
+        try {
+            ValidationUtility.validateLastName(dto.getLastName());
+        } catch (BadRequestException ex) {
+            validationErrors.add(ex.getMessage());
+        }
+        return validationErrors;
     }
 
     public static boolean shouldDoMFA(UserModel user,

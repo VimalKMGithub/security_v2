@@ -21,10 +21,7 @@ import javax.crypto.NoSuchPaddingException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -58,7 +55,7 @@ public class UserService {
 
     public ResponseEntity<Map<String, Object>> register(RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.REGISTRATION_ENABLED.name())) {
-            var invalidInputs = InputValidationUtility.validateInputs(dto);
+            var invalidInputs = UserUtility.validateInputs(dto);
             if (!invalidInputs.isEmpty())
                 return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
             if (userRepo.existsByUsername(dto.getUsername()))
@@ -245,7 +242,7 @@ public class UserService {
     }
 
     public ResponseEntity<Map<String, Object>> resetPasswordUsername(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var invalidInputs = InputValidationUtility.validateInputs(dto, "username");
+        var invalidInputs = validateInputs(dto, "username");
         if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
         var user = userRepo.findByUsername(dto.getUsername()).orElseThrow(() -> new BadRequestException("Invalid username"));
         verifyOTPForResetPassword(dto, user);
@@ -253,6 +250,52 @@ public class UserService {
         user.setUpdatedBy("SELF");
         userRepo.save(user);
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
+    }
+
+    private Collection<String> validateInputs(ResetPwdDto dto,
+                                              String type) {
+        var validationErrors = validateInputsPasswordAndConfirmPassword(dto);
+        switch (type) {
+            case "username" -> {
+                try {
+                    ValidationUtility.validateUsername(dto.getUsername());
+                } catch (BadRequestException ex) {
+                    validationErrors.add("Invalid username");
+                }
+            }
+            case "email" -> {
+                try {
+                    ValidationUtility.validateEmail(dto.getEmail());
+                } catch (BadRequestException ex) {
+                    validationErrors.add("Invalid email");
+                }
+            }
+            case "usernameOrEmail" -> {
+                try {
+                    ValidationUtility.validateStringNonNullAndNotEmpty(dto.getUsernameOrEmail(), "Username/email");
+                } catch (BadRequestException ex) {
+                    validationErrors.add("Invalid username/email");
+                }
+            }
+        }
+        try {
+            ValidationUtility.validateOTP(dto.getOtp(), "OTP");
+        } catch (BadRequestException ex) {
+            validationErrors.add("Invalid OTP");
+        }
+        return validationErrors;
+    }
+
+    private Collection<String> validateInputsPasswordAndConfirmPassword(ResetPwdDto dto) {
+        var validationErrors = new HashSet<String>();
+        try {
+            ValidationUtility.validatePassword(dto.getPassword());
+            if (!dto.getPassword().equals(dto.getConfirmPassword()))
+                validationErrors.add("New password: '" + dto.getPassword() + "' and confirm password: '" + dto.getConfirmPassword() + "' do not match");
+        } catch (BadRequestException ex) {
+            validationErrors.add("New " + ex.getMessage());
+        }
+        return validationErrors;
     }
 
     private void verifyOTPForResetPassword(ResetPwdDto dto, UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -269,7 +312,7 @@ public class UserService {
     }
 
     public ResponseEntity<Map<String, Object>> resetPasswordEmail(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var invalidInputs = InputValidationUtility.validateInputs(dto, "email");
+        var invalidInputs = validateInputs(dto, "email");
         if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
         var user = userRepo.findByEmail(dto.getEmail()).orElseThrow(() -> new BadRequestException("Invalid email"));
         verifyOTPForResetPassword(dto, user);
@@ -280,7 +323,7 @@ public class UserService {
     }
 
     public ResponseEntity<Map<String, Object>> resetPassword(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var invalidInputs = InputValidationUtility.validateInputs(dto, "usernameOrEmail");
+        var invalidInputs = validateInputs(dto, "usernameOrEmail");
         if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
         if (ValidationUtility.USERNAME_PATTERN.matcher(dto.getUsernameOrEmail()).matches()) {
             dto.setUsername(dto.getUsernameOrEmail());
@@ -292,7 +335,7 @@ public class UserService {
     }
 
     public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(ResetPwdUsingOldPwdDto dto) {
-        var invalidInputs = InputValidationUtility.validateInputsPasswordAndConfirmPassword(dto);
+        var invalidInputs = validateInputsPasswordAndConfirmPassword(dto);
         try {
             ValidationUtility.validatePassword(dto.getOldPassword());
         } catch (BadRequestException ex) {

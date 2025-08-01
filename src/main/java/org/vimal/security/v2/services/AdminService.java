@@ -225,7 +225,7 @@ public class AdminService {
         var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_USERS.name());
         if (entryCheck(variant, userHighestTopRole)) {
             checkUserCanDeleteUsers(userHighestTopRole);
-            validateDtosSizeForUsersDeletion(variant, usernamesOrEmails);
+            validateInputsSizeForUsersDeletion(variant, usernamesOrEmails);
             var userDeletionInputResult = validateInput(usernamesOrEmails, user);
             var mapOfErrors = errorsStuffingIfAnyInInput(userDeletionInputResult);
             if (!mapOfErrors.isEmpty()) return new UserDeletionResultDto(mapOfErrors, null, null, null);
@@ -239,8 +239,8 @@ public class AdminService {
             throw new ServiceUnavailableException("Deletion of users is currently disabled. Please try again later");
     }
 
-    private void validateDtosSizeForUsersDeletion(Variant variant,
-                                                  Collection<String> usernamesOrEmails) {
+    private void validateInputsSizeForUsersDeletion(Variant variant,
+                                                    Collection<String> usernamesOrEmails) {
         if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to delete");
         if (variant.isEnabled() && variant.getPayload().isPresent()) {
             var maxUsersToDeleteAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
@@ -372,17 +372,9 @@ public class AdminService {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = getUserHighestTopRole(user);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_READ_USERS.name());
-        if (variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
-            if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_READ_USERS_BY_USERS_HAVE_PERMISSION_TO_READ_USERS.name()))
-                throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
-            if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to read");
-            if (variant.isEnabled() && variant.getPayload().isPresent()) {
-                var maxUsersToReadAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
-                if (maxUsersToReadAtATime < 1) maxUsersToReadAtATime = DEFAULT_MAX_USERS_TO_READ_AT_A_TIME;
-                if (usernamesOrEmails.size() > maxUsersToReadAtATime)
-                    throw new BadRequestException("Cannot read more than " + maxUsersToReadAtATime + " users at a time");
-            } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_READ_AT_A_TIME)
-                throw new BadRequestException("Cannot read more than " + DEFAULT_MAX_USERS_TO_READ_AT_A_TIME + " users at a time");
+        if (entryCheck(variant, userHighestTopRole)) {
+            checkUserCanReadUsers(userHighestTopRole);
+            validateInputsSizeForUsersToRead(variant, usernamesOrEmails);
             var invalidInputs = new HashSet<String>();
             var emails = new HashSet<String>();
             var usernames = new HashSet<String>();
@@ -407,6 +399,23 @@ public class AdminService {
             return ResponseEntity.ok(Map.of("message", "Users read successfully", "users", foundByUsernames.stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
         }
         throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
+    }
+
+    private void checkUserCanReadUsers(String userHighestTopRole) {
+        if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_READ_USERS_BY_USERS_HAVE_PERMISSION_TO_READ_USERS.name()))
+            throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
+    }
+
+    private void validateInputsSizeForUsersToRead(Variant variant,
+                                                  Collection<String> usernamesOrEmails) {
+        if (usernamesOrEmails.isEmpty()) throw new BadRequestException("No users to read");
+        if (variant.isEnabled() && variant.getPayload().isPresent()) {
+            var maxUsersToReadAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+            if (maxUsersToReadAtATime < 1) maxUsersToReadAtATime = DEFAULT_MAX_USERS_TO_READ_AT_A_TIME;
+            if (usernamesOrEmails.size() > maxUsersToReadAtATime)
+                throw new BadRequestException("Cannot read more than " + maxUsersToReadAtATime + " users at a time");
+        } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_READ_AT_A_TIME)
+            throw new BadRequestException("Cannot read more than " + DEFAULT_MAX_USERS_TO_READ_AT_A_TIME + " users at a time");
     }
 
 //    public ResponseEntity<Map<String, Object>> updateUser(UserUpdationDto dto) {

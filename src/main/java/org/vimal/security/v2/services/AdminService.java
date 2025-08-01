@@ -2,6 +2,7 @@ package org.vimal.security.v2.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.getunleash.Unleash;
+import io.getunleash.variant.Variant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
@@ -54,9 +55,9 @@ public class AdminService {
         var creator = UserUtility.getCurrentAuthenticatedUserDetails();
         var creatorHighestTopRole = getUserHighestTopRole(creator);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_CREATE_USERS.name());
-        if (UserUtility.entryCheck(variant, creatorHighestTopRole)) {
-            UserUtility.checkUserCanCreateUsers(creatorHighestTopRole, unleash);
-            UserUtility.validateDtosSizeForUsersCreation(variant, dtos, 1, DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME);
+        if (entryCheck(variant, creatorHighestTopRole)) {
+            checkUserCanCreateUsers(creatorHighestTopRole);
+            validateDtosSizeForUsersCreation(variant, dtos);
             var invalidInputs = new HashSet<String>();
             var roles = new HashSet<String>();
             var duplicateUsernamesInDtos = new HashSet<String>();
@@ -118,6 +119,28 @@ public class AdminService {
                 .filter(SystemRoles.TOP_ROLES::contains)
                 .min(Comparator.comparingInt(SystemRoles.TOP_ROLES::indexOf))
                 .orElse(null);
+    }
+
+    private boolean entryCheck(Variant variant,
+                               String userHighestTopRole) {
+        return variant.isEnabled() || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole);
+    }
+
+    private void checkUserCanCreateUsers(String userHighestTopRole) {
+        if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_CREATE_USERS_BY_USERS_HAVE_PERMISSION_TO_CREATE_USERS.name()))
+            throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
+    }
+
+    private void validateDtosSizeForUsersCreation(Variant variant,
+                                                  Collection<UserCreationDto> dtos) {
+        if (dtos.isEmpty()) throw new BadRequestException("No users to create");
+        if (variant.isEnabled() && variant.getPayload().isPresent()) {
+            var maxUsersToCreateAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+            if (maxUsersToCreateAtATime < 1) maxUsersToCreateAtATime = DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME;
+            if (dtos.size() > maxUsersToCreateAtATime)
+                throw new BadRequestException("Cannot create more than " + maxUsersToCreateAtATime + " users at a time");
+        } else if (dtos.size() > DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME)
+            throw new BadRequestException("Cannot create more than " + DEFAULT_MAX_USERS_TO_CREATE_AT_A_TIME + " users at a time");
     }
 
     private Collection<String> validateRolesRestriction(Collection<String> roles,

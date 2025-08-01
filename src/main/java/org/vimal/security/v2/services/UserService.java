@@ -26,8 +26,8 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class UserService {
-    private static final Collection<String> REMOVE_DOTS = Set.of("gmail.com", "googlemail.com");
-    private static final Collection<String> REMOVE_ALIAS_PART = Set.of("gmail.com", "googlemail.com", "live.com", "protonmail.com", "hotmail.com", "outlook.com");
+    private static final Set<String> REMOVE_DOTS = Set.of("gmail.com", "googlemail.com");
+    private static final Set<String> REMOVE_ALIAS_PART = Set.of("gmail.com", "googlemail.com", "live.com", "protonmail.com", "hotmail.com", "outlook.com");
     private static final String EMAIL_VERIFICATION_TOKEN_PREFIX = "SECURITY_V2_EMAIL_VERIFICATION_TOKEN:";
     private static final String EMAIL_VERIFICATION_TOKEN_MAPPING_PREFIX = "SECURITY_V2_EMAIL_VERIFICATION_TOKEN_MAPPING:";
     private static final String FORGOT_PASSWORD_OTP_PREFIX = "SECURITY_V2_FORGOT_PASSWORD_OTP:";
@@ -267,8 +267,8 @@ public class UserService {
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
 
-    private Collection<String> validateInputs(ResetPwdDto dto,
-                                              String type) {
+    private Set<String> validateInputs(ResetPwdDto dto,
+                                       String type) {
         var validationErrors = validateInputsPasswordAndConfirmPassword(dto);
         switch (type) {
             case "username" -> {
@@ -301,7 +301,7 @@ public class UserService {
         return validationErrors;
     }
 
-    private Collection<String> validateInputsPasswordAndConfirmPassword(ResetPwdDto dto) {
+    private Set<String> validateInputsPasswordAndConfirmPassword(ResetPwdDto dto) {
         var validationErrors = new HashSet<String>();
         try {
             ValidationUtility.validatePassword(dto.getPassword());

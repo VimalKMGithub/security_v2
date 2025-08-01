@@ -5,8 +5,9 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +25,7 @@ public class RedisService {
         return redisTemplate.opsForValue().get(key);
     }
 
-    public Collection<Object> getAll(Collection<Object> keys) {
+    public List<Object> getAll(Set<Object> keys) {
         return redisTemplate.opsForValue().multiGet(keys);
     }
 
@@ -32,7 +33,7 @@ public class RedisService {
         redisTemplate.delete(key);
     }
 
-    public void deleteAll(Collection<Object> keys) {
+    public void deleteAll(Set<Object> keys) {
         redisTemplate.delete(keys);
     }
 

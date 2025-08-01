@@ -70,11 +70,8 @@ public class AdminService {
             var duplicateEmailsInDtos = new HashSet<String>();
             var usernames = new HashSet<String>();
             var emails = new HashSet<String>();
+            dtos.remove(null);
             dtos.forEach(dto -> {
-                if (Objects.isNull(dto)) {
-                    dtos.remove(dto);
-                    return;
-                }
                 var invalidInputsForThisDto = InputValidationUtility.validateInputs(dto);
                 if (!invalidInputsForThisDto.isEmpty()) invalidInputs.addAll(invalidInputsForThisDto);
                 if (dto.getUsername() != null && ValidationUtility.USERNAME_PATTERN.matcher(dto.getUsername()).matches() && !usernames.add(dto.getUsername()))

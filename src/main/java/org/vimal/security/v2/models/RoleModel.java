@@ -7,7 +7,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.NaturalId;
 
 import java.time.Instant;
-import java.util.Collection;
+import java.util.Set;
 
 @Entity
 @Table(name = "roles",
@@ -38,7 +38,7 @@ public class RoleModel {
                     foreignKey = @ForeignKey(name = "fk_role_permissions_role")),
             inverseJoinColumns = @JoinColumn(name = "permission_name", referencedColumnName = "permission_name",
                     foreignKey = @ForeignKey(name = "fk_role_permissions_permission")))
-    private Collection<PermissionModel> permissions;
+    private Set<PermissionModel> permissions;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

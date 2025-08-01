@@ -7,8 +7,8 @@ import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import java.time.Instant;
-import java.util.Collection;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -112,7 +112,7 @@ public class UserModel {
     @JoinTable(name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "role_name", referencedColumnName = "role_name"))
-    private Collection<RoleModel> roles;
+    private Set<RoleModel> roles;
 
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt;
@@ -214,7 +214,7 @@ public class UserModel {
             joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "mfa_type", nullable = false)
     @Enumerated(EnumType.STRING)
-    private Collection<MfaType> enabledMfaMethods;
+    private Set<MfaType> enabledMfaMethods;
 
     public void enableMfaMethod(MfaType mfaType) {
         this.enabledMfaMethods.add(mfaType);

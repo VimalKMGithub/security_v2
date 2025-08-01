@@ -79,7 +79,7 @@ public class UserService {
         throw new ServiceUnavailableException("Registration is currently disabled. Please try again later");
     }
 
-    public static String sanitizeEmail(String email) {
+    private String sanitizeEmail(String email) {
         var lowerCasedEmail = email.trim().toLowerCase();
         var atIndex = lowerCasedEmail.indexOf('@');
         var local = lowerCasedEmail.substring(0, atIndex);

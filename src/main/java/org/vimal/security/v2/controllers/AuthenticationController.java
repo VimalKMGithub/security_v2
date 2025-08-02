@@ -72,9 +72,9 @@ public class AuthenticationController {
     }
 
     @PostMapping("/MFA/verify/MFA/toLogin")
-    public ResponseEntity<Map<String, Object>> verifyMFAForLogin(@RequestParam String type,
-                                                                 @RequestParam String stateToken,
-                                                                 @RequestParam String otpTotp) {
+    public ResponseEntity<Map<String, Object>> verifyMFAToLogin(@RequestParam String type,
+                                                                @RequestParam String stateToken,
+                                                                @RequestParam String otpTotp) {
     }
 
     @PostMapping("/MFA/verify/email/OTP/toLogin")

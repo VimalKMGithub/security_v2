@@ -336,6 +336,9 @@ public class UserService {
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
 
+    public Map<String, String> changePasswordMethodSelection(String method) {
+    }
+
     public Map<String, String> emailChangeRequest(String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.EMAIL_CHANGE_ENABLED.name())) {
             ValidationUtility.validateEmail(newEmail);

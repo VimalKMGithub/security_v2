@@ -161,36 +161,6 @@ public class UserService {
         throw new BadRequestException("Invalid email verification token");
     }
 
-    public Map<String, String> resendEmailVerificationLinkUsername(String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (unleash.isEnabled(FeatureFlags.RESEND_REGISTRATION_EMAIL_VERIFICATION.name())) {
-            try {
-                ValidationUtility.validateUsername(username);
-            } catch (BadRequestException ex) {
-                throw new BadRequestException("Invalid username");
-            }
-            var user = userRepo.findByUsername(username).orElseThrow(() -> new BadRequestException("Invalid username"));
-            if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
-            mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration using username", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
-            return Map.of("message", "Email verification link resent successfully. Please check your email");
-        }
-        throw new ServiceUnavailableException("Resending email verification link is currently disabled. Please try again later");
-    }
-
-    public Map<String, String> resendEmailVerificationLinkEmail(String email) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (unleash.isEnabled(FeatureFlags.RESEND_REGISTRATION_EMAIL_VERIFICATION.name())) {
-            try {
-                ValidationUtility.validateEmail(email);
-            } catch (BadRequestException ex) {
-                throw new BadRequestException("Invalid email");
-            }
-            var user = userRepo.findByEmail(email).orElseThrow(() -> new BadRequestException("Invalid email"));
-            if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
-            mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration using email", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
-            return Map.of("message", "Email verification link resent successfully. Please check your email");
-        }
-        throw new ServiceUnavailableException("Resending email verification link is currently disabled. Please try again later");
-    }
-
     public Map<String, String> resendEmailVerificationLink(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.RESEND_REGISTRATION_EMAIL_VERIFICATION.name())) {
             try {
@@ -198,31 +168,44 @@ public class UserService {
             } catch (BadRequestException ex) {
                 throw new BadRequestException("Invalid username/email");
             }
+            UserModel user;
             if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
-                return resendEmailVerificationLinkUsername(usernameOrEmail);
+                user = userRepo.findByUsername(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid username"));
             else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
-                return resendEmailVerificationLinkEmail(usernameOrEmail);
+                user = userRepo.findByEmail(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid email"));
             else throw new BadRequestException("Invalid username/email");
+            return proceedResendEmailVerificationLink(user);
         }
         throw new ServiceUnavailableException("Resending email verification link is currently disabled. Please try again later");
     }
 
-    public Map<String, Object> forgotPasswordUsername(String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    private Map<String, String> proceedResendEmailVerificationLink(UserModel user) {
+        if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
+        mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
+        return Map.of("message", "Email verification link resent successfully. Please check your email");
+    }
+
+    public ResponseEntity<Map<String, Object>> forgotPassword(String usernameOrEmail) {
         try {
-            ValidationUtility.validateUsername(username);
+            ValidationUtility.validateStringNonNullAndNotEmpty(usernameOrEmail, "Username/email");
         } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid username");
+            throw new BadRequestException("Invalid username/email");
         }
-        var user = userRepo.findByUsername(username).orElseThrow(() -> new BadRequestException("Invalid username"));
+        UserModel user;
+        if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
+            user = userRepo.findByUsername(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid username"));
+        else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
+            user = userRepo.findByEmail(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid email"));
+        else throw new BadRequestException("Invalid username/email");
         if (!user.isEmailVerified())
-            throw new BadRequestException("Email is not verified. Please verify your email before resetting password");
-        if (user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
-            var methods = user.getEnabledMfaMethods();
-            methods.add(UserModel.MfaType.EMAIL);
-            return Map.of("message", "Please select a method", "methods", methods);
-        }
-        mailService.sendOtpAsync(user.getEmail(), "OTP for resetting password using username", generateOTPForForgotPassword(user));
-        return Map.of("message", "OTP sent to your email. Please check your email to reset your password");
+            return ResponseEntity.badRequest().body(Map.of("message", "Email is not verified. Please verify your email before resetting password"));
+        var methods = user.getEnabledMfaMethods();
+        methods.add(UserModel.MfaType.EMAIL);
+        return ResponseEntity.ok(Map.of("message", "Please select a method to receive OTP for password reset", "methods", methods));
+    }
+
+    public Map<String, String> forgotPasswordMethodSelection(String usernameOrEmail,
+                                                             String method) {
     }
 
     private String generateOTPForForgotPassword(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -233,32 +216,6 @@ public class UserService {
 
     private String getEncryptedForgotPasswordOtpKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return emailOTPForPWDResetStaticConverter.encrypt(FORGOT_PASSWORD_OTP_PREFIX + user.getId());
-    }
-
-    public Map<String, String> forgotPasswordEmail(String email) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        try {
-            ValidationUtility.validateEmail(email);
-        } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid email");
-        }
-        var user = userRepo.findByEmail(email).orElseThrow(() -> new BadRequestException("Invalid email"));
-        if (!user.isEmailVerified())
-            throw new BadRequestException("Email is not verified. Please verify your email before resetting password");
-        mailService.sendOtpAsync(user.getEmail(), "OTP for resetting password using email", generateOTPForForgotPassword(user));
-        return Map.of("message", "OTP sent to your email. Please check your email to reset your password");
-    }
-
-    public Map<String, String> forgotPassword(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        try {
-            ValidationUtility.validateStringNonNullAndNotEmpty(usernameOrEmail, "Username/email");
-        } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid username/email");
-        }
-        if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
-            return forgotPasswordUsername(usernameOrEmail);
-        else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
-            return forgotPasswordEmail(usernameOrEmail);
-        else throw new BadRequestException("Invalid username/email");
     }
 
     public ResponseEntity<Map<String, Object>> resetPasswordUsername(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

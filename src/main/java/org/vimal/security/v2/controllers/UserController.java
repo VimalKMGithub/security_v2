@@ -36,44 +36,20 @@ public class UserController {
         return ResponseEntity.ok(userService.verifyEmail(emailVerificationToken));
     }
 
-    @PostMapping("/resend/emailVerification/link/username")
-    public ResponseEntity<Map<String, String>> resendEmailVerificationLinkUsername(@RequestParam String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(userService.resendEmailVerificationLinkUsername(username));
-    }
-
-    @PostMapping("/resend/emailVerification/link/email")
-    public ResponseEntity<Map<String, String>> resendEmailVerificationLinkEmail(@RequestParam String email) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(userService.resendEmailVerificationLinkEmail(email));
-    }
-
     @PostMapping("/resend/emailVerification/link")
     public ResponseEntity<Map<String, String>> resendEmailVerificationLink(@RequestParam String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(userService.resendEmailVerificationLink(usernameOrEmail));
     }
 
-    @PostMapping("/forgot/password/username")
-    public ResponseEntity<Map<String, Object>> forgotPasswordUsername(@RequestParam String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(userService.forgotPasswordUsername(username));
-    }
-
-    @PostMapping("/forgot/password/email")
-    public ResponseEntity<Map<String, String>> forgotPasswordEmail(@RequestParam String email) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(userService.forgotPasswordEmail(email));
-    }
-
     @PostMapping("/forgot/password")
-    public ResponseEntity<Map<String, String>> forgotPassword(@RequestParam String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(userService.forgotPassword(usernameOrEmail));
+    public ResponseEntity<Map<String, Object>> forgotPassword(@RequestParam String usernameOrEmail) {
+        return userService.forgotPassword(usernameOrEmail);
     }
 
-    @PostMapping("/reset/password/username")
-    public ResponseEntity<Map<String, Object>> resetPasswordUsername(@RequestBody ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return userService.resetPasswordUsername(dto);
-    }
-
-    @PostMapping("/reset/password/email")
-    public ResponseEntity<Map<String, Object>> resetPasswordEmail(@RequestBody ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return userService.resetPasswordEmail(dto);
+    @PostMapping("/forgot/password/methodSelection")
+    public ResponseEntity<Map<String, String>> forgotPasswordMethodSelection(@RequestParam String usernameOrEmail,
+                                                                             @RequestParam String method) {
+        return ResponseEntity.ok(userService.forgotPasswordMethodSelection(usernameOrEmail, method));
     }
 
     @PostMapping("/reset/password")

@@ -65,7 +65,7 @@ public class AdminService {
             if (!resolvedRolesResult.getMissingRoles().isEmpty())
                 mapOfErrors.put("missing_roles", resolvedRolesResult.getMissingRoles());
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
-            if (dtos.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "No users to create"));
+            if (dtos.isEmpty()) return ResponseEntity.ok(Map.of("message", "No users to create"));
             var resolvedRolesMap = resolvedRolesResult.getRoles().stream().collect(Collectors.toMap(RoleModel::getRoleName, Function.identity()));
             var newUsers = dtos.stream().map(dto -> {
                         if (Objects.isNull(dto.getRoles()) || dto.getRoles().isEmpty())

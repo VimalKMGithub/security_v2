@@ -67,6 +67,11 @@ public class UserController {
         return ResponseEntity.ok(userService.changePasswordMethodSelection(method));
     }
 
+    @PostMapping("/verify/change/password")
+    public ResponseEntity<Map<String, Object>> verifyChangePassword(@RequestBody ChangePwdDto dto) {
+        return userService.verifyChangePassword(dto);
+    }
+
     @PostMapping("/email/change/request")
     public ResponseEntity<Map<String, String>> emailChangeRequest(@RequestParam String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(userService.emailChangeRequest(newEmail));

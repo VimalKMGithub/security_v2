@@ -381,6 +381,71 @@ public class UserService {
         return emailOTPForPasswordChangeStaticConverter.encrypt(EMAIL_OTP_FOR_PASSWORD_CHANGE_PREFIX + user.getId());
     }
 
+    public ResponseEntity<Map<String, Object>> verifyChangePassword(ChangePwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        UserUtility.validateTypeExistence(dto.getMethod());
+        var invalidInputs = validateInputsPasswordAndConfirmPassword(dto);
+        try {
+            ValidationUtility.validateOTP(dto.getOtpTotp(), "OTP/TOTP");
+        } catch (BadRequestException ex) {
+            invalidInputs.add("Invalid OTP/TOTP");
+        }
+        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        UserUtility.checkMFAEnabledGlobally(unleash);
+        var user = UserUtility.getCurrentAuthenticatedUser();
+        var methodType = UserModel.MfaType.valueOf(dto.getMethod().toUpperCase());
+        switch (methodType) {
+            case UserModel.MfaType.EMAIL -> {
+                if (user.getEnabledMfaMethods().isEmpty()) {
+                    if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
+                        return ResponseEntity.ok(verifyEmailOTPToChangePassword(user, dto));
+                    }
+                    throw new BadRequestException("Email MFA is not enabled");
+                } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
+                    if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                        throw new ServiceUnavailableException("Email MFA is disabled globally");
+                    return ResponseEntity.ok(verifyEmailOTPToChangePassword(user, dto));
+                } else throw new BadRequestException("Email MFA is not enabled");
+            }
+            case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+                    throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
+                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                    throw new BadRequestException("Authenticator app MFA is not enabled");
+                return ResponseEntity.ok(verifyAuthenticatorAppTOTPToChangePassword(user, dto));
+            }
+            default ->
+                    throw new BadRequestException("Unsupported MFA type: " + dto.getMethod() + ". Supported types: " + UserUtility.MFA_METHODS);
+        }
+    }
+
+    private Map<String, Object> verifyEmailOTPToChangePassword(UserModel user,
+                                                               ChangePwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var encryptedPasswordChangeOTPKey = getEncryptedPasswordChangeOTPKey(user);
+        var encryptedOtp = redisService.get(encryptedPasswordChangeOTPKey);
+        if (encryptedOtp != null) {
+            if (emailOTPForPasswordChangeRandomConverter.decrypt((String) encryptedOtp, String.class).equals(dto.getOtpTotp())) {
+                try {
+                    redisService.delete(encryptedPasswordChangeOTPKey);
+                } catch (Exception ignored) {
+                }
+                user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+                selfChangePassword(user, dto.getPassword());
+                return Map.of("message", "Password change successful");
+            }
+            throw new BadRequestException("Invalid OTP");
+        }
+        throw new BadRequestException("Invalid OTP");
+    }
+
+    private Map<String, Object> verifyAuthenticatorAppTOTPToChangePassword(UserModel user,
+                                                                           ChangePwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), dto.getOtpTotp()))
+            throw new BadRequestException("Invalid TOTP");
+        selfChangePassword(user, dto.getPassword());
+        return Map.of("message", "Password change successful");
+    }
+
     public Map<String, String> emailChangeRequest(String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.EMAIL_CHANGE_ENABLED.name())) {
             ValidationUtility.validateEmail(newEmail);

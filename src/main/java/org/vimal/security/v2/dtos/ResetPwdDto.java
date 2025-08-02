@@ -7,8 +7,8 @@ import lombok.Setter;
 @Setter
 public class ResetPwdDto {
     private String usernameOrEmail;
-    private String method;
     private String otpTotp;
+    public String method;
     public String password;
     public String confirmPassword;
 }

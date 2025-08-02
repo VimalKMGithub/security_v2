@@ -76,7 +76,7 @@ public class AuthenticationService {
     private Map<String, Object> proceedLogin(UserModel user,
                                              String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         try {
-            var authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), password));
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), password));
             return handleSuccessfulLogin(user);
         } catch (BadCredentialsException ex) {
             if (ex.getCause() instanceof UsernameNotFoundException) throw ex;

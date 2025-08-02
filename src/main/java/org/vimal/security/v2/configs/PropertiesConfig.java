@@ -31,6 +31,8 @@ public class PropertiesConfig {
     private String emailOtpForEmailChangeForOldEmailSecretRandom;
     private String emailOtpToDeleteAccountSecretStatic;
     private String emailOtpToDeleteAccountSecretRandom;
+    private String emailOtpForPasswordChangeSecretStatic;
+    private String emailOtpForPasswordChangeSecretRandom;
     private String mailDisplayName;
     private String helpMailAddress;
     private String godUserUsername;

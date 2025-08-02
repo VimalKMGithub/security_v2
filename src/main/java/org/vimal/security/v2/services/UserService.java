@@ -339,6 +339,15 @@ public class UserService {
     public Map<String, String> changePasswordMethodSelection(String method) {
         UserUtility.validateTypeExistence(method);
         UserUtility.checkMFAEnabledGlobally(unleash);
+        var methodType = UserModel.MfaType.valueOf(method.toUpperCase());
+        switch (methodType) {
+            case UserModel.MfaType.EMAIL -> {
+            }
+            case UserModel.MfaType.AUTHENTICATOR_APP -> {
+            }
+            default ->
+                    throw new BadRequestException("Unsupported MFA type: " + method + ". Supported types: " + UserUtility.MFA_METHODS);
+        }
     }
 
     public Map<String, String> emailChangeRequest(String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

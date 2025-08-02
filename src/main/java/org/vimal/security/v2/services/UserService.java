@@ -339,18 +339,46 @@ public class UserService {
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
 
-    public Map<String, String> changePasswordMethodSelection(String method) {
+    public Map<String, String> changePasswordMethodSelection(String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         UserUtility.validateTypeExistence(method);
         UserUtility.checkMFAEnabledGlobally(unleash);
+        var user = UserUtility.getCurrentAuthenticatedUser();
         var methodType = UserModel.MfaType.valueOf(method.toUpperCase());
         switch (methodType) {
             case UserModel.MfaType.EMAIL -> {
+                if (user.getEnabledMfaMethods().isEmpty()) {
+                    if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
+                        mailService.sendOtpAsync(user.getEmail(), "OTP for password change", generateOTPForPasswordChange(user));
+                        return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+                    }
+                    throw new BadRequestException("Email MFA is not enabled");
+                } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
+                    if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                        throw new ServiceUnavailableException("Email MFA is disabled globally");
+                    mailService.sendOtpAsync(user.getEmail(), "OTP for password change", generateOTPForPasswordChange(user));
+                    return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+                } else throw new BadRequestException("Email MFA is not enabled");
             }
             case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+                    throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
+                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                    throw new BadRequestException("Authenticator app MFA is not enabled");
+                return Map.of("message", "Please proceed to verify TOTP");
             }
             default ->
                     throw new BadRequestException("Unsupported MFA type: " + method + ". Supported types: " + UserUtility.MFA_METHODS);
         }
+    }
+
+    private String generateOTPForPasswordChange(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var otp = OTPUtility.generateOtp();
+        redisService.save(getEncryptedPasswordChangeOTPKey(user), emailOTPForPasswordChangeRandomConverter.encrypt(otp), RedisService.DEFAULT_TTL);
+        return otp;
+    }
+
+    private String getEncryptedPasswordChangeOTPKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return emailOTPForPasswordChangeStaticConverter.encrypt(EMAIL_OTP_FOR_PASSWORD_CHANGE_PREFIX + user.getId());
     }
 
     public Map<String, String> emailChangeRequest(String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

@@ -47,12 +47,6 @@ public class AdminService {
     private final Unleash unleash;
     private final JWTUtility jwtUtility;
 
-    public ResponseEntity<Map<String, Object>> createUser(UserCreationDto dto) {
-        var dtosSet = new HashSet<UserCreationDto>();
-        dtosSet.add(dto);
-        return createUsers(dtosSet);
-    }
-
     public ResponseEntity<Map<String, Object>> createUsers(Set<UserCreationDto> dtos) {
         var creator = UserUtility.getCurrentAuthenticatedUserDetails();
         var creatorHighestTopRole = getUserHighestTopRole(creator);
@@ -202,12 +196,6 @@ public class AdminService {
                 .build();
     }
 
-    public ResponseEntity<Map<String, Object>> deleteUser(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var usernamesOrEmailsSet = new HashSet<String>();
-        usernamesOrEmailsSet.add(usernameOrEmail);
-        return deleteUsers(usernamesOrEmailsSet);
-    }
-
     public ResponseEntity<Map<String, Object>> deleteUsers(Set<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = getUserHighestTopRole(user);
@@ -333,12 +321,6 @@ public class AdminService {
         return mapOfErrors;
     }
 
-    public ResponseEntity<Map<String, Object>> deleteUserHard(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var usernamesOrEmailsSet = new HashSet<String>();
-        usernamesOrEmailsSet.add(usernameOrEmail);
-        return deleteUsersHard(usernamesOrEmailsSet);
-    }
-
     public ResponseEntity<Map<String, Object>> deleteUsersHard(Set<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = getUserHighestTopRole(user);
@@ -368,12 +350,6 @@ public class AdminService {
     private void checkUserCanHardDeleteUsers(String userHighestTopRole) {
         if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_HARD_DELETE_USERS_BY_USERS_HAVE_PERMISSION_TO_DELETE_USERS.name()))
             throw new ServiceUnavailableException("Hard deletion of users is currently disabled. Please try again later");
-    }
-
-    public ResponseEntity<Map<String, Object>> getUser(String usernameOrEmail) {
-        var usernamesOrEmailsSet = new HashSet<String>();
-        usernamesOrEmailsSet.add(usernameOrEmail);
-        return getUsers(usernamesOrEmailsSet);
     }
 
     public ResponseEntity<Map<String, Object>> getUsers(Set<String> usernamesOrEmails) {
@@ -420,12 +396,6 @@ public class AdminService {
                 throw new BadRequestException("Cannot read more than " + maxUsersToReadAtATime + " users at a time");
         } else if (usernamesOrEmails.size() > DEFAULT_MAX_USERS_TO_READ_AT_A_TIME)
             throw new BadRequestException("Cannot read more than " + DEFAULT_MAX_USERS_TO_READ_AT_A_TIME + " users at a time");
-    }
-
-    public ResponseEntity<Map<String, Object>> updateUser(UserUpdationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var dtosSet = new HashSet<UserUpdationDto>();
-        dtosSet.add(dto);
-        return updateUsers(dtosSet);
     }
 
     public ResponseEntity<Map<String, Object>> updateUsers(Set<UserUpdationDto> dtos) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

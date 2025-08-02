@@ -337,6 +337,8 @@ public class UserService {
     }
 
     public Map<String, String> changePasswordMethodSelection(String method) {
+        UserUtility.validateTypeExistence(method);
+        UserUtility.checkMFAEnabledGlobally(unleash);
     }
 
     public Map<String, String> emailChangeRequest(String newEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

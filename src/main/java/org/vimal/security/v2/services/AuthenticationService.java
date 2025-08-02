@@ -173,7 +173,7 @@ public class AuthenticationService {
                                            UserModel user,
                                            boolean toggleEnabled) {
         UserUtility.validateTypeExistence(type);
-        checkMFAEnabledGlobally();
+        UserUtility.checkMFAEnabledGlobally(unleash);
         var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
         if (!unleash.isEnabled(mfaType.getFeatureFlag().name()))
             throw new ServiceUnavailableException(type + " MFA is disabled globally");
@@ -181,11 +181,6 @@ public class AuthenticationService {
         if (toggleEnabled && hasMFAType) throw new BadRequestException(type + " MFA is already enabled");
         if (!toggleEnabled && !hasMFAType) throw new BadRequestException(type + " MFA is already disabled");
         return mfaType;
-    }
-
-    private void checkMFAEnabledGlobally() {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
-            throw new ServiceUnavailableException("MFA is disabled globally");
     }
 
     private ResponseEntity<Object> proceedRequestToToggleMFA(UserModel user,
@@ -349,7 +344,7 @@ public class AuthenticationService {
     public Map<String, String> requestToLoginMFA(String type,
                                                  String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         UserUtility.validateTypeExistence(type);
-        checkMFAEnabledGlobally();
+        UserUtility.checkMFAEnabledGlobally(unleash);
         try {
             ValidationUtility.validateUuid(stateToken, "State token");
         } catch (BadRequestException ex) {
@@ -402,7 +397,7 @@ public class AuthenticationService {
                                                 String stateToken,
                                                 String otpTotp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
         UserUtility.validateTypeExistence(type);
-        checkMFAEnabledGlobally();
+        UserUtility.checkMFAEnabledGlobally(unleash);
         try {
             ValidationUtility.validateUuid(stateToken, "State token");
             ValidationUtility.validateOTP(otpTotp, "OTP/TOTP");

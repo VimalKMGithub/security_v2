@@ -332,9 +332,7 @@ public class UserService {
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
         if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))
             throw new BadRequestException("Invalid old password");
-        user.changePassword(passwordEncoder.encode(dto.getPassword()));
-        user.setUpdatedBy("SELF");
-        userRepo.save(user);
+        selfChangePassword(user, dto.getPassword());
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
     }
 

@@ -568,7 +568,8 @@ public class UserService {
         jwtUtility.revokeTokens(user);
         user.recordAccountDeletion(true, "SELF");
         userRepo.save(user);
-        mailService.sendAccountDeletionConfirmationAsync(user.getEmail(), "Account deletion confirmation");
+        if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_ACCOUNT_DELETION.name()))
+            mailService.sendAccountDeletionConfirmationAsync(user.getEmail(), "Account deletion confirmation");
     }
 
     public Map<String, String> deleteAccountMethodSelection(String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

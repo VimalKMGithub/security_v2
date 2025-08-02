@@ -314,7 +314,7 @@ public class UserService {
         return Map.of("message", "Password reset successful");
     }
 
-    public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(ResetPwdUsingOldPwdDto dto) {
+    public ResponseEntity<Map<String, Object>> changePasswordUsingOldPassword(ChangePwdUsingOldPwdDto dto) {
         var invalidInputs = validateInputsPasswordAndConfirmPassword(dto);
         try {
             ValidationUtility.validatePassword(dto.getOldPassword());

@@ -57,9 +57,9 @@ public class UserController {
         return userService.resetPassword(dto);
     }
 
-    @PostMapping("/reset/password/using/oldPassword")
-    public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(@RequestBody ResetPwdUsingOldPwdDto dto) {
-        return userService.resetPasswordUsingOldPassword(dto);
+    @PostMapping("/change/password/using/oldPassword")
+    public ResponseEntity<Map<String, Object>> changePasswordUsingOldPassword(@RequestBody ChangePwdUsingOldPwdDto dto) {
+        return userService.changePasswordUsingOldPassword(dto);
     }
 
     @PostMapping("/email/change/request")

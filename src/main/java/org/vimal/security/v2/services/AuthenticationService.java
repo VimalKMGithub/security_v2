@@ -254,7 +254,7 @@ public class AuthenticationService {
         if (toggleEnabled) {
             switch (type) {
                 case UserModel.MfaType.EMAIL -> {
-                    return verifyOTPToToggleEmailMfa(user, otpTotp, true);
+                    return verifyOTPToToggleEmailMFA(user, otpTotp, true);
                 }
                 case UserModel.MfaType.AUTHENTICATOR_APP -> {
                     return verifyTOTPToEnableAuthenticatorApp(user, otpTotp);
@@ -263,7 +263,7 @@ public class AuthenticationService {
         } else {
             switch (type) {
                 case UserModel.MfaType.EMAIL -> {
-                    return verifyOTPToToggleEmailMfa(user, otpTotp, false);
+                    return verifyOTPToToggleEmailMFA(user, otpTotp, false);
                 }
                 case UserModel.MfaType.AUTHENTICATOR_APP -> {
                     return verifyTOTPToDisableAuthenticatorAppMFA(user, otpTotp);
@@ -273,7 +273,7 @@ public class AuthenticationService {
         throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + UserUtility.MFA_METHODS);
     }
 
-    private Map<String, String> verifyOTPToToggleEmailMfa(UserModel user,
+    private Map<String, String> verifyOTPToToggleEmailMFA(UserModel user,
                                                           String otp,
                                                           boolean toggle) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         validateOTPTOTP(otp);

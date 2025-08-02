@@ -325,9 +325,9 @@ public class UserService {
         var user = UserUtility.getCurrentAuthenticatedUser();
         if (unleash.isEnabled(FeatureFlags.MFA.name())) {
             if (UserUtility.shouldDoMFA(user, unleash))
-                return ResponseEntity.badRequest().body(Map.of("message", "Since MFA is enabled in your account you cannot change password using old password only", "mfa_methods", user.getEnabledMfaMethods()));
+                return ResponseEntity.ok(Map.of("message", "Please select a method to receive OTP for password change", "methods", user.getEnabledMfaMethods()));
             if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name()))
-                return ResponseEntity.badRequest().body(Map.of("message", "Since MFA is forced globally you cannot change password using old password only", "mfa_methods", Set.of(UserModel.MfaType.EMAIL)));
+                return ResponseEntity.ok(Map.of("message", "Please select a method to receive OTP for password change", "methods", Set.of(UserModel.MfaType.EMAIL)));
         }
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
         if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))

@@ -175,10 +175,8 @@ public class AuthenticationService {
     private UserModel.MfaType validateType(String type,
                                            UserModel user,
                                            boolean toggleEnabled) {
-        if (!MFA_METHODS.contains(type.toLowerCase()))
-            throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
-        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
-            throw new ServiceUnavailableException("MFA is disabled globally");
+        validateTypeExistence(type);
+        checkMFAEnabledGlobally();
         var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
         if (!unleash.isEnabled(mfaType.getFeatureFlag().name()))
             throw new ServiceUnavailableException(type + " MFA is disabled globally");
@@ -186,6 +184,16 @@ public class AuthenticationService {
         if (toggleEnabled && hasMFAType) throw new BadRequestException(type + " MFA is already enabled");
         if (!toggleEnabled && !hasMFAType) throw new BadRequestException(type + " MFA is already disabled");
         return mfaType;
+    }
+
+    private void validateTypeExistence(String type) {
+        if (!MFA_METHODS.contains(type.toLowerCase()))
+            throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+    }
+
+    private void checkMFAEnabledGlobally() {
+        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+            throw new ServiceUnavailableException("MFA is disabled globally");
     }
 
     private ResponseEntity<Object> proceedRequestToToggleMFA(UserModel user,
@@ -346,22 +354,28 @@ public class AuthenticationService {
         return Map.of("message", "Authenticator app MFA disabled successfully. Please log in again to continue");
     }
 
-    public Map<String, String> sendEmailOTPToVerifyEmailMFAToLogin(String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
-            throw new ServiceUnavailableException("MFA is disabled globally");
-        var forcedMFA = unleash.isEnabled(FeatureFlags.FORCE_MFA.name());
-        if (!forcedMFA) if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new ServiceUnavailableException("Email MFA is disabled globally");
+    public Map<String, String> requestToLoginMFA(String type,
+                                                 String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        validateTypeExistence(type);
+        checkMFAEnabledGlobally();
         try {
             ValidationUtility.validateUuid(stateToken, "State token");
         } catch (BadRequestException ex) {
             throw new BadRequestException("Invalid state token");
         }
         var user = getUser(stateToken);
-        if (!forcedMFA && !user.hasMfaEnabled(UserModel.MfaType.EMAIL))
-            throw new BadRequestException("Email MFA is not enabled");
-        mailService.sendOtpAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user));
-        return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+        var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
+        switch (mfaType) {
+            case UserModel.MfaType.EMAIL -> {
+                mailService.sendOtpAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user));
+                return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+            }
+            case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                return Map.of("message", "Please proceed to verify TOTP");
+            }
+            default ->
+                    throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+        }
     }
 
     private UserModel getUser(String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

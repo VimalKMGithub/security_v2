@@ -61,13 +61,20 @@ public class AuthenticationController {
     @PostMapping("/MFA/verify/toggle")
     public ResponseEntity<Map<String, String>> verifyToggleMFA(@RequestParam String type,
                                                                @RequestParam String toggle,
-                                                               @RequestParam String otpOrTotp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.verifyToggleMFA(type, toggle, otpOrTotp));
+                                                               @RequestParam String otpTotp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(authenticationService.verifyToggleMFA(type, toggle, otpTotp));
     }
 
-    @PostMapping("/MFA/send/email/OTP/toVerifyEmailMFAToLogin")
-    public ResponseEntity<Map<String, String>> sendEmailOTPToVerifyEmailMFAToLogin(@RequestParam String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.sendEmailOTPToVerifyEmailMFAToLogin(stateToken));
+    @PostMapping("/MFA/requestTo/login")
+    public ResponseEntity<Map<String, String>> requestToLoginMFA(@RequestParam String type,
+                                                                 @RequestParam String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(authenticationService.requestToLoginMFA(type, stateToken));
+    }
+
+    @PostMapping("/MFA/verify/MFA/toLogin")
+    public ResponseEntity<Map<String, Object>> verifyMFAForLogin(@RequestParam String type,
+                                                                 @RequestParam String stateToken,
+                                                                 @RequestParam String otpTotp) {
     }
 
     @PostMapping("/MFA/verify/email/OTP/toLogin")

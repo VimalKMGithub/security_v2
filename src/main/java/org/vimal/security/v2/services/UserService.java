@@ -207,7 +207,7 @@ public class UserService {
         throw new ServiceUnavailableException("Resending email verification link is currently disabled. Please try again later");
     }
 
-    public Map<String, String> forgotPasswordUsername(String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public Map<String, Object> forgotPasswordUsername(String username) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         try {
             ValidationUtility.validateUsername(username);
         } catch (BadRequestException ex) {
@@ -216,6 +216,11 @@ public class UserService {
         var user = userRepo.findByUsername(username).orElseThrow(() -> new BadRequestException("Invalid username"));
         if (!user.isEmailVerified())
             throw new BadRequestException("Email is not verified. Please verify your email before resetting password");
+        if (user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
+            var methods = user.getEnabledMfaMethods();
+            methods.add(UserModel.MfaType.EMAIL);
+            return Map.of("message", "Please select a method", "methods", methods);
+        }
         mailService.sendOtpAsync(user.getEmail(), "OTP for resetting password using username", generateOTPForForgotPassword(user));
         return Map.of("message", "OTP sent to your email. Please check your email to reset your password");
     }
@@ -229,6 +234,23 @@ public class UserService {
     private String getEncryptedForgotPasswordOtpKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return emailOTPForPWDResetStaticConverter.encrypt(FORGOT_PASSWORD_OTP_PREFIX + user.getId());
     }
+
+//    private Map<String, String> processType(String usernameOrEmail,
+//                                            String type) {
+//        try {
+//            ValidationUtility.validateStringNonNullAndNotEmpty(usernameOrEmail, "Username/email");
+//        } catch (BadRequestException ex) {
+//            throw new BadRequestException("Invalid username/email");
+//        }
+//        UserModel user = null;
+//        if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
+//            user = userRepo.findByUsername(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid username"));
+//        else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
+//            user = userRepo.findByEmail(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid email"));
+//        else throw new BadRequestException("Invalid username/email");
+//    }
+//
+//    private void
 
     public Map<String, String> forgotPasswordEmail(String email) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         try {

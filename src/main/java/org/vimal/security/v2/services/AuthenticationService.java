@@ -57,20 +57,31 @@ public class AuthenticationService {
     private final AuthenticatorAppSecretRandomConverter authenticatorAppSecretRandomConverter;
     private final PasswordEncoder passwordEncoder;
 
-    public Map<String, Object> loginUsername(String username,
-                                             String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public Map<String, Object> login(String usernameOrEmail,
+                                     String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         try {
-            ValidationUtility.validateUsername(username);
+            ValidationUtility.validateStringNonNullAndNotEmpty(usernameOrEmail, "Username/email");
             ValidationUtility.validatePassword(password);
         } catch (BadRequestException ex) {
             throw new BadCredentialsException("Invalid credentials");
         }
+        UserModel user;
+        if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
+            user = userRepo.findByEmail(usernameOrEmail).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        else if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
+            user = userRepo.findByUsername(usernameOrEmail).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        else throw new BadCredentialsException("Invalid credentials");
+        return proceedLogin(user, password);
+    }
+
+    private Map<String, Object> proceedLogin(UserModel user,
+                                             String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         try {
-            var authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+            var authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), password));
             return handleSuccessfulLogin(authentication);
         } catch (BadCredentialsException ex) {
             if (ex.getCause() instanceof UsernameNotFoundException) throw ex;
-            handleFailedLogin(username);
+            handleFailedLogin(user);
             throw ex;
         }
     }
@@ -107,49 +118,9 @@ public class AuthenticationService {
         return stateTokenStaticConverter.encrypt(STATE_TOKEN_PREFIX + user.getId());
     }
 
-    private void handleFailedLogin(String username) {
-        var user = userRepo.findByUsername(username).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
-        user.recordFailedLoginAttempt();
-        userRepo.save(user);
-    }
-
     private void handleFailedLogin(UserModel user) {
         user.recordFailedLoginAttempt();
         userRepo.save(user);
-    }
-
-    public Map<String, Object> loginEmail(String email,
-                                          String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        try {
-            ValidationUtility.validateEmail(email);
-            ValidationUtility.validatePassword(password);
-        } catch (BadRequestException ex) {
-            throw new BadCredentialsException("Invalid credentials");
-        }
-        var user = userRepo.findByEmail(email).orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
-        try {
-            var authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), password));
-            return handleSuccessfulLogin(authentication);
-        } catch (BadCredentialsException ex) {
-            if (ex.getCause() instanceof UsernameNotFoundException) throw ex;
-            handleFailedLogin(user);
-            throw ex;
-        }
-    }
-
-    public Map<String, Object> login(String usernameOrEmail,
-                                     String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        try {
-            ValidationUtility.validateStringNonNullAndNotEmpty(usernameOrEmail, "Username/email");
-            ValidationUtility.validatePassword(password);
-        } catch (BadRequestException ex) {
-            throw new BadCredentialsException("Invalid credentials");
-        }
-        if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
-            return loginEmail(usernameOrEmail, password);
-        else if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
-            return loginUsername(usernameOrEmail, password);
-        else throw new BadCredentialsException("Invalid credentials");
     }
 
     public Map<String, String> logout() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

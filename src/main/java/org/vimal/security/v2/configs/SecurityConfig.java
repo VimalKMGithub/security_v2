@@ -41,8 +41,6 @@ public class SecurityConfig {
     private static final String AUTH = "/auth";
     private static final String MFA = "/MFA";
     private static final String[] ALLOWED_API_ENDPOINT_WITHOUT_AUTHENTICATION = {
-            API_VERSION + AUTH + "/login/username",
-            API_VERSION + AUTH + "/login/email",
             API_VERSION + AUTH + "/login",
             API_VERSION + AUTH + "/refresh/accessToken",
             API_VERSION + AUTH + "/revoke/refreshToken",

@@ -27,18 +27,6 @@ import java.util.Map;
 public class AuthenticationController {
     private final AuthenticationService authenticationService;
 
-    @PostMapping("/login/username")
-    public ResponseEntity<Map<String, Object>> loginUsername(@RequestParam String username,
-                                                             @RequestParam String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.loginUsername(username, password));
-    }
-
-    @PostMapping("/login/email")
-    public ResponseEntity<Map<String, Object>> loginEmail(@RequestParam String email,
-                                                          @RequestParam String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.loginEmail(email, password));
-    }
-
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestParam String usernameOrEmail,
                                                      @RequestParam String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

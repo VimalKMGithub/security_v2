@@ -7,7 +7,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.vimal.security.v2.dtos.RegistrationDto;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
-import org.vimal.security.v2.exceptions.ServiceUnavailableException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
 
@@ -105,12 +104,5 @@ public class UserUtility {
     public static void validateTypeExistence(String type) {
         if (!MFA_METHODS.contains(type.toLowerCase()))
             throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
-    }
-
-    public static void checkMFAAndAuthenticatorAppMFAEnabledGlobally(Unleash unleash) {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
-            throw new ServiceUnavailableException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
-            throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
     }
 }

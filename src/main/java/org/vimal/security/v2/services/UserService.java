@@ -163,29 +163,12 @@ public class UserService {
 
     public Map<String, String> resendEmailVerificationLink(String usernameOrEmail) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.RESEND_REGISTRATION_EMAIL_VERIFICATION.name())) {
-            try {
-                ValidationUtility.validateStringNonNullAndNotEmpty(usernameOrEmail, "Username/email");
-            } catch (BadRequestException ex) {
-                throw new BadRequestException("Invalid username/email");
-            }
-            UserModel user;
-            if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
-                user = userRepo.findByUsername(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid username"));
-            else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
-                user = userRepo.findByEmail(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid email"));
-            else throw new BadRequestException("Invalid username/email");
-            return proceedResendEmailVerificationLink(user);
+            return proceedResendEmailVerificationLink(getUserByUsernameOrEmail(usernameOrEmail));
         }
         throw new ServiceUnavailableException("Resending email verification link is currently disabled. Please try again later");
     }
 
-    private Map<String, String> proceedResendEmailVerificationLink(UserModel user) {
-        if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
-        mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
-        return Map.of("message", "Email verification link resent successfully. Please check your email");
-    }
-
-    public ResponseEntity<Map<String, Object>> forgotPassword(String usernameOrEmail) {
+    private UserModel getUserByUsernameOrEmail(String usernameOrEmail) {
         try {
             ValidationUtility.validateStringNonNullAndNotEmpty(usernameOrEmail, "Username/email");
         } catch (BadRequestException ex) {
@@ -197,6 +180,17 @@ public class UserService {
         else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
             user = userRepo.findByEmail(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid email"));
         else throw new BadRequestException("Invalid username/email");
+        return user;
+    }
+
+    private Map<String, String> proceedResendEmailVerificationLink(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
+        mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
+        return Map.of("message", "Email verification link resent successfully. Please check your email");
+    }
+
+    public ResponseEntity<Map<String, Object>> forgotPassword(String usernameOrEmail) {
+        var user = getUserByUsernameOrEmail(usernameOrEmail);
         if (!user.isEmailVerified())
             return ResponseEntity.badRequest().body(Map.of("message", "Email is not verified. Please verify your email before resetting password"));
         var methods = user.getEnabledMfaMethods();
@@ -205,7 +199,25 @@ public class UserService {
     }
 
     public Map<String, String> forgotPasswordMethodSelection(String usernameOrEmail,
-                                                             String method) {
+                                                             String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        UserUtility.validateTypeExistence(method);
+        var methodType = UserModel.MfaType.valueOf(method.toUpperCase());
+        var user = getUserByUsernameOrEmail(usernameOrEmail);
+        var methods = user.getEnabledMfaMethods();
+        methods.add(UserModel.MfaType.EMAIL);
+        if (!user.hasMfaEnabled(methodType))
+            throw new BadRequestException("MFA method: '" + method + "' is not enabled for user");
+        switch (methodType) {
+            case UserModel.MfaType.EMAIL -> {
+                mailService.sendOtpAsync(user.getEmail(), "OTP for resetting password", generateOTPForForgotPassword(user));
+                return Map.of("Message", "OTP sent to your email. Please check your email to reset your password");
+            }
+            case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                return Map.of("message", "Please proceed to verify TOTP");
+            }
+            default ->
+                    throw new BadRequestException("Unsupported MFA type: " + method + ". Supported types: " + UserUtility.MFA_METHODS);
+        }
     }
 
     private String generateOTPForForgotPassword(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -218,46 +230,26 @@ public class UserService {
         return emailOTPForPWDResetStaticConverter.encrypt(FORGOT_PASSWORD_OTP_PREFIX + user.getId());
     }
 
-    public ResponseEntity<Map<String, Object>> resetPasswordUsername(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var invalidInputs = validateInputs(dto, "username");
+    public ResponseEntity<Map<String, Object>> resetPassword(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var invalidInputs = validateInputs(dto);
         if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
-        var user = userRepo.findByUsername(dto.getUsername()).orElseThrow(() -> new BadRequestException("Invalid username"));
-        verifyOTPForResetPassword(dto, user);
-        user.changePassword(passwordEncoder.encode(dto.getPassword()));
-        user.setUpdatedBy("SELF");
-        userRepo.save(user);
-        return ResponseEntity.ok(Map.of("message", "Password reset successful"));
+        var user = getUserByUsernameOrEmail(dto.getUsernameOrEmail());
     }
 
-    private Set<String> validateInputs(ResetPwdDto dto,
-                                       String type) {
+    private Set<String> validateInputs(ResetPwdDto dto) {
         var validationErrors = validateInputsPasswordAndConfirmPassword(dto);
-        switch (type) {
-            case "username" -> {
-                try {
-                    ValidationUtility.validateUsername(dto.getUsername());
-                } catch (BadRequestException ex) {
-                    validationErrors.add("Invalid username");
-                }
-            }
-            case "email" -> {
-                try {
-                    ValidationUtility.validateEmail(dto.getEmail());
-                } catch (BadRequestException ex) {
-                    validationErrors.add("Invalid email");
-                }
-            }
-            case "usernameOrEmail" -> {
-                try {
-                    ValidationUtility.validateStringNonNullAndNotEmpty(dto.getUsernameOrEmail(), "Username/email");
-                } catch (BadRequestException ex) {
-                    validationErrors.add("Invalid username/email");
-                }
-            }
-            default -> throw new BadRequestException("Invalid type for validation: " + type);
+        try {
+            UserUtility.validateTypeExistence(dto.getMethod());
+        } catch (BadRequestException ex) {
+            validationErrors.add(ex.getMessage());
         }
         try {
-            ValidationUtility.validateOTP(dto.getOtp(), "OTP");
+            ValidationUtility.validateStringNonNullAndNotEmpty(dto.getUsernameOrEmail(), "Username/email");
+        } catch (BadRequestException ex) {
+            validationErrors.add("Invalid username/email");
+        }
+        try {
+            ValidationUtility.validateOTP(dto.getOtpTotp(), "OTP");
         } catch (BadRequestException ex) {
             validationErrors.add("Invalid OTP");
         }
@@ -280,36 +272,13 @@ public class UserService {
         var encryptedForgotPasswordOtpKey = getEncryptedForgotPasswordOtpKey(user);
         var encryptedOtp = redisService.get(encryptedForgotPasswordOtpKey);
         if (encryptedOtp != null) {
-            if (emailOTPForPWDResetRandomConverter.decrypt((String) encryptedOtp, String.class).equals(dto.getOtp())) {
+            if (emailOTPForPWDResetRandomConverter.decrypt((String) encryptedOtp, String.class).equals(dto.getOtpTotp())) {
                 redisService.delete(encryptedForgotPasswordOtpKey);
                 return;
             }
             throw new BadRequestException("Invalid OTP");
         }
         throw new BadRequestException("Invalid OTP");
-    }
-
-    public ResponseEntity<Map<String, Object>> resetPasswordEmail(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var invalidInputs = validateInputs(dto, "email");
-        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
-        var user = userRepo.findByEmail(dto.getEmail()).orElseThrow(() -> new BadRequestException("Invalid email"));
-        verifyOTPForResetPassword(dto, user);
-        user.changePassword(passwordEncoder.encode(dto.getPassword()));
-        user.setUpdatedBy("SELF");
-        userRepo.save(user);
-        return ResponseEntity.ok(Map.of("message", "Password reset successful"));
-    }
-
-    public ResponseEntity<Map<String, Object>> resetPassword(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var invalidInputs = validateInputs(dto, "usernameOrEmail");
-        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
-        if (ValidationUtility.USERNAME_PATTERN.matcher(dto.getUsernameOrEmail()).matches()) {
-            dto.setUsername(dto.getUsernameOrEmail());
-            return resetPasswordUsername(dto);
-        } else if (ValidationUtility.EMAIL_PATTERN.matcher(dto.getUsernameOrEmail()).matches()) {
-            dto.setEmail(dto.getUsernameOrEmail());
-            return resetPasswordEmail(dto);
-        } else throw new BadRequestException("Invalid username/email");
     }
 
     public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(ResetPwdUsingOldPwdDto dto) {
@@ -515,7 +484,12 @@ public class UserService {
     public Map<String, String> verifyTOTPToDeleteAccount(String totp,
                                                          String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.ACCOUNT_DELETION_ALLOWED.name())) {
-            UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
+//            public static void checkMFAAndAuthenticatorAppMFAEnabledGlobally(Unleash unleash) {
+//                if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+//                    throw new ServiceUnavailableException("MFA is disabled globally");
+//                if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+//                    throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
+//            }
             var user = UserUtility.getCurrentAuthenticatedUser();
             if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
                 throw new BadRequestException("Authenticator app MFA is disabled");

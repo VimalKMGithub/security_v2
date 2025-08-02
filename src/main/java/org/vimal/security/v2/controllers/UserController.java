@@ -48,7 +48,7 @@ public class UserController {
 
     @PostMapping("/forgot/password/methodSelection")
     public ResponseEntity<Map<String, String>> forgotPasswordMethodSelection(@RequestParam String usernameOrEmail,
-                                                                             @RequestParam String method) {
+                                                                             @RequestParam String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(userService.forgotPasswordMethodSelection(usernameOrEmail, method));
     }
 

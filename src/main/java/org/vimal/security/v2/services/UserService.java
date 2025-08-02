@@ -292,6 +292,7 @@ public class UserService {
                     validationErrors.add("Invalid username/email");
                 }
             }
+            default -> throw new BadRequestException("Invalid type for validation: " + type);
         }
         try {
             ValidationUtility.validateOTP(dto.getOtp(), "OTP");

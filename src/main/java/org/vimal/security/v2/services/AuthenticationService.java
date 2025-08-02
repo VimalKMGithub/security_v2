@@ -367,10 +367,24 @@ public class AuthenticationService {
         var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
         switch (mfaType) {
             case UserModel.MfaType.EMAIL -> {
-                mailService.sendOtpAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user));
-                return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+                if (user.getEnabledMfaMethods().isEmpty()) {
+                    if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
+                        mailService.sendOtpAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user));
+                        return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+                    }
+                    throw new BadRequestException("Email MFA is not enabled");
+                } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
+                    if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                        throw new ServiceUnavailableException("Email MFA is disabled globally");
+                    mailService.sendOtpAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user));
+                    return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+                } else throw new BadRequestException("Email MFA is not enabled");
             }
             case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+                    throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
+                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                    throw new BadRequestException("Authenticator app MFA is not enabled");
                 return Map.of("message", "Please proceed to verify TOTP");
             }
             default ->
@@ -390,6 +404,34 @@ public class AuthenticationService {
         var encryptedUserId = redisService.get(encryptedStateTokenMappingKey);
         if (encryptedUserId != null) return stateTokenRandomConverter.decrypt((String) encryptedUserId, UUID.class);
         throw new BadRequestException("Invalid state token");
+    }
+
+    public Map<String, Object> verifyMFAToLogin(String type,
+                                                String stateToken,
+                                                String otpTotp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
+        validateTypeExistence(type);
+        checkMFAEnabledGlobally();
+        try {
+            ValidationUtility.validateUuid(stateToken, "State token");
+            ValidationUtility.validateOTP(otpTotp, "OTP/TOTP");
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid OTP/TOTP or state token");
+        }
+        var encryptedStateTokenMappingKey = getEncryptedStateTokenMappingKey(stateToken);
+        var user = userRepo.findById(getUserIdFromEncryptedStateTokenMappingKey(encryptedStateTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid state token"));
+        var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
+//        var user = getUser(stateToken);
+//        var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
+//        switch (mfaType) {
+//            case UserModel.MfaType.EMAIL -> {
+//                return verifyEmailOTPToLogin(otpTotp, stateToken);
+//            }
+//            case UserModel.MfaType.AUTHENTICATOR_APP -> {
+//                return verifyTOTPToLogin(otpTotp, stateToken);
+//            }
+//            default ->
+//                    throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+//        }
     }
 
     public Map<String, Object> verifyEmailOTPToLogin(String otp,

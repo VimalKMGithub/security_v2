@@ -22,6 +22,7 @@ public class UnleashServerSideConfig {
                 .unleashAPI(propertiesConfig.getUnleashUrl())
                 .synchronousFetchOnInitialisation(true)
                 .apiKey(propertiesConfig.getUnleashApiToken())
+                .fetchTogglesInterval(5)
                 .build();
         return new DefaultUnleash(config);
     }

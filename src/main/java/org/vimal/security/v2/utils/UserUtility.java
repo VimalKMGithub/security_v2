@@ -11,11 +11,15 @@ import org.vimal.security.v2.exceptions.ServiceUnavailableException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class UserUtility {
+    public static final Set<String> MFA_METHODS = Arrays.stream(UserModel.MfaType.values()).map(e -> e.name().toLowerCase()).collect(Collectors.toSet());
+
     public static Authentication getAuthenticationOfCurrentAuthenticatedUser() {
         var authentication = getAuthentication();
         if (validateAuthentication(authentication)) return authentication;
@@ -96,6 +100,11 @@ public class UserUtility {
                 shouldDoMFA = true;
         }
         return shouldDoMFA;
+    }
+
+    public static void validateTypeExistence(String type) {
+        if (!MFA_METHODS.contains(type.toLowerCase()))
+            throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
     }
 
     public static void checkMFAAndAuthenticatorAppMFAEnabledGlobally(Unleash unleash) {

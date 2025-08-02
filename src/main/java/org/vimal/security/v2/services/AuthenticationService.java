@@ -33,16 +33,13 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
-    private static final Set<String> MFA_METHODS = Arrays.stream(UserModel.MfaType.values()).map(e -> e.name().toLowerCase()).collect(Collectors.toSet());
     private static final Set<String> TOGGLE_TYPE = Set.of("enable", "disable");
     private static final String STATE_TOKEN_PREFIX = "SECURITY_V2_STATE_TOKEN:";
     private static final String STATE_TOKEN_MAPPING_PREFIX = "SECURITY_V2_STATE_TOKEN_MAPPING:";
@@ -175,7 +172,7 @@ public class AuthenticationService {
     private UserModel.MfaType validateType(String type,
                                            UserModel user,
                                            boolean toggleEnabled) {
-        validateTypeExistence(type);
+        UserUtility.validateTypeExistence(type);
         checkMFAEnabledGlobally();
         var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
         if (!unleash.isEnabled(mfaType.getFeatureFlag().name()))
@@ -184,11 +181,6 @@ public class AuthenticationService {
         if (toggleEnabled && hasMFAType) throw new BadRequestException(type + " MFA is already enabled");
         if (!toggleEnabled && !hasMFAType) throw new BadRequestException(type + " MFA is already disabled");
         return mfaType;
-    }
-
-    private void validateTypeExistence(String type) {
-        if (!MFA_METHODS.contains(type.toLowerCase()))
-            throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
     }
 
     private void checkMFAEnabledGlobally() {
@@ -220,7 +212,7 @@ public class AuthenticationService {
                 }
             }
         }
-        throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+        throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + UserUtility.MFA_METHODS);
     }
 
     private String generateOTPForEmailMFA(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -278,7 +270,7 @@ public class AuthenticationService {
                 }
             }
         }
-        throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+        throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + UserUtility.MFA_METHODS);
     }
 
     private Map<String, String> verifyOTPToToggleEmailMfa(UserModel user,
@@ -356,7 +348,7 @@ public class AuthenticationService {
 
     public Map<String, String> requestToLoginMFA(String type,
                                                  String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        validateTypeExistence(type);
+        UserUtility.validateTypeExistence(type);
         checkMFAEnabledGlobally();
         try {
             ValidationUtility.validateUuid(stateToken, "State token");
@@ -388,7 +380,7 @@ public class AuthenticationService {
                 return Map.of("message", "Please proceed to verify TOTP");
             }
             default ->
-                    throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+                    throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + UserUtility.MFA_METHODS);
         }
     }
 
@@ -409,7 +401,7 @@ public class AuthenticationService {
     public Map<String, Object> verifyMFAToLogin(String type,
                                                 String stateToken,
                                                 String otpTotp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
-        validateTypeExistence(type);
+        UserUtility.validateTypeExistence(type);
         checkMFAEnabledGlobally();
         try {
             ValidationUtility.validateUuid(stateToken, "State token");
@@ -441,7 +433,7 @@ public class AuthenticationService {
                 return verifyAuthenticatorAppTOTPToLogin(user, otpTotp, encryptedStateTokenMappingKey);
             }
             default ->
-                    throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+                    throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + UserUtility.MFA_METHODS);
         }
     }
 

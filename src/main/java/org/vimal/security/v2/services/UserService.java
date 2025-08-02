@@ -231,18 +231,31 @@ public class UserService {
     }
 
     public ResponseEntity<Map<String, Object>> resetPassword(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        UserUtility.validateTypeExistence(dto.getMethod());
         var invalidInputs = validateInputs(dto);
         if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        var methodType = UserModel.MfaType.valueOf(dto.getMethod().toUpperCase());
         var user = getUserByUsernameOrEmail(dto.getUsernameOrEmail());
+        var methods = user.getEnabledMfaMethods();
+        methods.add(UserModel.MfaType.EMAIL);
+        if (!user.hasMfaEnabled(methodType))
+            throw new BadRequestException("MFA method: '" + dto.getMethod() + "' is not enabled for user");
+        switch (methodType) {
+            case UserModel.MfaType.EMAIL -> {
+                return ResponseEntity.ok(verifyEmailOTPForResetPassword(user, dto));
+            }
+            case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                    throw new BadRequestException("Authenticator app is not enabled");
+                return ResponseEntity.ok(verifyAuthenticatorAppTOTPToResetPassword(user, dto));
+            }
+            default ->
+                    throw new BadRequestException("Unsupported MFA type: " + dto.getMethod() + ". Supported types: " + UserUtility.MFA_METHODS);
+        }
     }
 
     private Set<String> validateInputs(ResetPwdDto dto) {
         var validationErrors = validateInputsPasswordAndConfirmPassword(dto);
-        try {
-            UserUtility.validateTypeExistence(dto.getMethod());
-        } catch (BadRequestException ex) {
-            validationErrors.add(ex.getMessage());
-        }
         try {
             ValidationUtility.validateStringNonNullAndNotEmpty(dto.getUsernameOrEmail(), "Username/email");
         } catch (BadRequestException ex) {
@@ -268,17 +281,37 @@ public class UserService {
         return validationErrors;
     }
 
-    private void verifyOTPForResetPassword(ResetPwdDto dto, UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    private Map<String, Object> verifyEmailOTPForResetPassword(UserModel user,
+                                                               ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedForgotPasswordOtpKey = getEncryptedForgotPasswordOtpKey(user);
         var encryptedOtp = redisService.get(encryptedForgotPasswordOtpKey);
         if (encryptedOtp != null) {
             if (emailOTPForPWDResetRandomConverter.decrypt((String) encryptedOtp, String.class).equals(dto.getOtpTotp())) {
-                redisService.delete(encryptedForgotPasswordOtpKey);
-                return;
+                try {
+                    redisService.delete(encryptedForgotPasswordOtpKey);
+                } catch (Exception ignored) {
+                }
+                selfChangePassword(user, dto.getPassword());
+                return Map.of("message", "Password reset successful");
             }
             throw new BadRequestException("Invalid OTP");
         }
         throw new BadRequestException("Invalid OTP");
+    }
+
+    private void selfChangePassword(UserModel user,
+                                    String password) {
+        user.changePassword(passwordEncoder.encode(password));
+        user.setUpdatedBy("SELF");
+        userRepo.save(user);
+    }
+
+    private Map<String, Object> verifyAuthenticatorAppTOTPToResetPassword(UserModel user,
+                                                                          ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), dto.getOtpTotp()))
+            throw new BadRequestException("Invalid TOTP");
+        selfChangePassword(user, dto.getPassword());
+        return Map.of("message", "Password reset successful");
     }
 
     public ResponseEntity<Map<String, Object>> resetPasswordUsingOldPassword(ResetPwdUsingOldPwdDto dto) {

@@ -35,6 +35,7 @@ public class UserService {
     private static final String EMAIL_CHANGE_OTP_FOR_OLD_EMAIL_PREFIX = "SECURITY_V2_EMAIL_CHANGE_OTP_FOR_OLD_EMAIL:";
     private static final String EMAIL_STORE_PREFIX = "SECURITY_V2_EMAIL_STORE:";
     private static final String EMAIL_OTP_TO_DELETE_ACCOUNT_PREFIX = "SECURITY_V2_EMAIL_OTP_TO_DELETE_ACCOUNT:";
+    private static final String EMAIL_OTP_FOR_PASSWORD_CHANGE_PREFIX = "SECURITY_V2_EMAIL_OTP_FOR_PASSWORD_CHANGE:";
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
@@ -54,6 +55,8 @@ public class UserService {
     private final EmailOTPToDeleteAccountStaticConverter emailOTPToDeleteAccountStaticConverter;
     private final EmailOTPToDeleteAccountRandomConverter emailOTPToDeleteAccountRandomConverter;
     private final AuthenticatorAppSecretRandomConverter authenticatorAppSecretRandomConverter;
+    private final EmailOTPForPasswordChangeStaticConverter emailOTPForPasswordChangeStaticConverter;
+    private final EmailOTPForPasswordChangeRandomConverter emailOTPForPasswordChangeRandomConverter;
 
     public ResponseEntity<Map<String, Object>> register(RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.REGISTRATION_ENABLED.name())) {

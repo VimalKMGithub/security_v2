@@ -311,8 +311,8 @@ public class AdminService {
                                                            Set<String> rolesOfUsers,
                                                            String userHighestTopRole) {
         var mapOfErrors = new HashMap<String, Object>();
-        if (!userDeletionInputResult.getEmails().isEmpty())
-            mapOfErrors.put("users_not_found_with_usernames", userDeletionInputResult.getEmails());
+        if (!userDeletionInputResult.getUsernames().isEmpty())
+            mapOfErrors.put("users_not_found_with_usernames", userDeletionInputResult.getUsernames());
         if (!userDeletionInputResult.getEmails().isEmpty())
             mapOfErrors.put("users_not_found_with_emails", userDeletionInputResult.getEmails());
         var notAllowedToDeleteUsersWithRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);

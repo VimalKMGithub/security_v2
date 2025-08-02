@@ -68,7 +68,7 @@ public class UserController {
     }
 
     @PostMapping("/verify/change/password")
-    public ResponseEntity<Map<String, Object>> verifyChangePassword(@RequestBody ChangePwdDto dto) {
+    public ResponseEntity<Map<String, Object>> verifyChangePassword(@RequestBody ChangePwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return userService.verifyChangePassword(dto);
     }
 

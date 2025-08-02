@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.vimal.security.v2.enums.FeatureFlags;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -206,7 +207,14 @@ public class UserModel {
     @Getter
     public enum MfaType {
         EMAIL,
-        AUTHENTICATOR_APP
+        AUTHENTICATOR_APP;
+
+        public FeatureFlags getFeatureFlag() {
+            return switch (this) {
+                case EMAIL -> FeatureFlags.MFA_EMAIL;
+                case AUTHENTICATOR_APP -> FeatureFlags.MFA_AUTHENTICATOR_APP;
+            };
+        }
     }
 
     @ElementCollection(targetClass = MfaType.class, fetch = FetchType.EAGER)

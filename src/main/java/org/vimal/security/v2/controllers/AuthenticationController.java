@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.zxing.WriterException;
 import lombok.RequiredArgsConstructor;
 import org.jose4j.lang.JoseException;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,14 +52,17 @@ public class AuthenticationController {
         return ResponseEntity.ok(authenticationService.revokeRefreshToken(refreshToken));
     }
 
-    @PostMapping("/MFA/send/email/OTP/toEnableEmailMFA")
-    public ResponseEntity<Map<String, String>> sendEmailOTPToEnableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.sendEmailOTPToEnableEmailMFA());
+    @PostMapping("/MFA/requestTo/toggle")
+    public ResponseEntity<Object> requestToToggleMFA(@RequestParam String type,
+                                                     @RequestParam String toggle) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, IOException, InvalidKeyException, WriterException {
+        return authenticationService.requestToToggleMFA(type, toggle);
     }
 
-    @PostMapping("/MFA/verify/email/OTP/toEnableEmailMFA")
-    public ResponseEntity<Map<String, String>> verifyEmailOTPToEnableEmailMFA(@RequestParam String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.verifyEmailOTPToEnableEmailMFA(otp));
+    @PostMapping("/MFA/verify/toggle")
+    public ResponseEntity<Map<String, String>> verifyToggleMFA(@RequestParam String type,
+                                                               @RequestParam String toggle,
+                                                               @RequestParam String otpOrTotp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(authenticationService.verifyToggleMFA(type, toggle, otpOrTotp));
     }
 
     @PostMapping("/MFA/send/email/OTP/toVerifyEmailMFAToLogin")
@@ -74,36 +76,9 @@ public class AuthenticationController {
         return ResponseEntity.ok(authenticationService.verifyEmailOTPToLogin(otp, stateToken));
     }
 
-    @PostMapping("/MFA/send/email/OTP/toDisableEmailMFA")
-    public ResponseEntity<Map<String, String>> sendEmailOTPToDisableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.sendEmailOTPToDisableEmailMFA());
-    }
-
-    @PostMapping("/MFA/verify/email/OTP/toDisableEmailMFA")
-    public ResponseEntity<Map<String, String>> verifyEmailOTPToDisableEmailMFA(@RequestParam String otp,
-                                                                               @RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.verifyEmailOTPToDisableEmailMFA(otp, password));
-    }
-
-    @PostMapping(path = "/MFA/generate/QRCode/toSetupAuthenticatorApp", produces = MediaType.IMAGE_PNG_VALUE)
-    public ResponseEntity<byte[]> generateQRCodeForAuthenticatorApp() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, IOException, InvalidKeyException, WriterException {
-        return ResponseEntity.ok(authenticationService.generateQRCodeForAuthenticatorApp());
-    }
-
-    @PostMapping("/MFA/verify/TOTP/toSetupAuthenticatorApp")
-    public ResponseEntity<Map<String, String>> verifyTOTPToSetupAuthenticatorApp(@RequestParam String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.verifyTOTPToSetupAuthenticatorApp(totp));
-    }
-
     @PostMapping("/MFA/verify/TOTP/toLogin")
     public ResponseEntity<Map<String, Object>> verifyTOTPToLogin(@RequestParam String totp,
                                                                  @RequestParam String stateToken) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(authenticationService.verifyTOTPToLogin(totp, stateToken));
-    }
-
-    @PostMapping("/MFA/verify/TOTP/toDisableAuthenticatorAppMFA")
-    public ResponseEntity<Map<String, String>> verifyTOTPToDisableAuthenticatorAppMFA(@RequestParam String totp,
-                                                                                      @RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.verifyTOTPToDisableAuthenticatorAppMFA(totp, password));
     }
 }

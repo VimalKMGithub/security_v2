@@ -5,6 +5,8 @@ import com.google.zxing.WriterException;
 import io.getunleash.Unleash;
 import lombok.RequiredArgsConstructor;
 import org.jose4j.lang.JoseException;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -31,13 +33,17 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
+    private static final Set<String> MFA_METHODS = Arrays.stream(UserModel.MfaType.values()).map(e -> e.name().toLowerCase()).collect(Collectors.toSet());
+    private static final Set<String> TOGGLE_TYPE = Set.of("enable", "disable");
     private static final String STATE_TOKEN_PREFIX = "SECURITY_V2_STATE_TOKEN:";
     private static final String STATE_TOKEN_MAPPING_PREFIX = "SECURITY_V2_STATE_TOKEN_MAPPING:";
     private static final String EMAIL_MFA_OTP_PREFIX = "SECURITY_V2_EMAIL_MFA_OTP:";
@@ -153,19 +159,60 @@ public class AuthenticationService {
         return Map.of("message", "Refresh token revoked successfully");
     }
 
-    public Map<String, String> sendEmailOTPToEnableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        checkMFAAndEmailMFAEnabledGlobally();
+    public ResponseEntity<Object> requestToToggleMFA(String type,
+                                                     String toggle) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, WriterException {
+        var toggleEnabled = validateToggle(toggle);
         var user = UserUtility.getCurrentAuthenticatedUser();
-        if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) throw new BadRequestException("Email MFA is already enabled");
-        mailService.sendOtpAsync(user.getEmail(), "OTP to enable email MFA", generateOTPForEmailMFA(user));
-        return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+        return proceedRequestToToggleMFA(user, validateType(type, user, toggleEnabled), toggleEnabled);
     }
 
-    private void checkMFAAndEmailMFAEnabledGlobally() {
+    private boolean validateToggle(String toggle) {
+        if (!TOGGLE_TYPE.contains(toggle.toLowerCase()))
+            throw new BadRequestException("Unsupported toggle type: " + toggle + ". Supported values: " + TOGGLE_TYPE);
+        return toggle.equalsIgnoreCase("enable");
+    }
+
+    private UserModel.MfaType validateType(String type,
+                                           UserModel user,
+                                           boolean toggleEnabled) {
+        if (!MFA_METHODS.contains(type.toLowerCase()))
+            throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
         if (!unleash.isEnabled(FeatureFlags.MFA.name()))
             throw new ServiceUnavailableException("MFA is disabled globally");
-        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new ServiceUnavailableException("Email MFA is disabled globally");
+        var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
+        if (!unleash.isEnabled(mfaType.getFeatureFlag().name()))
+            throw new ServiceUnavailableException(type + " MFA is disabled globally");
+        var hasMFAType = user.hasMfaEnabled(mfaType);
+        if (toggleEnabled && hasMFAType) throw new BadRequestException(type + " MFA is already enabled");
+        if (!toggleEnabled && !hasMFAType) throw new BadRequestException(type + " MFA is already disabled");
+        return mfaType;
+    }
+
+    private ResponseEntity<Object> proceedRequestToToggleMFA(UserModel user,
+                                                             UserModel.MfaType type,
+                                                             boolean toggleEnabled) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, WriterException {
+        if (toggleEnabled) {
+            switch (type) {
+                case UserModel.MfaType.EMAIL -> {
+                    mailService.sendOtpAsync(user.getEmail(), "OTP to enable email MFA", generateOTPForEmailMFA(user));
+                    return ResponseEntity.ok(Map.of("message", "OTP sent to your registered email address. Please check your email to continue"));
+                }
+                case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                    return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(generateQRCodeForAuthenticatorApp(user));
+                }
+            }
+        } else {
+            switch (type) {
+                case UserModel.MfaType.EMAIL -> {
+                    mailService.sendOtpAsync(user.getEmail(), "OTP to disable email MFA", generateOTPForEmailMFA(user));
+                    return ResponseEntity.ok(Map.of("message", "OTP sent to your registered email address. Please check your email to continue"));
+                }
+                case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                    return ResponseEntity.ok(Map.of("message", "Please proceed to verify TOTP"));
+                }
+            }
+        }
+        throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
     }
 
     private String generateOTPForEmailMFA(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -178,36 +225,125 @@ public class AuthenticationService {
         return emailOTPStaticConverter.encrypt(EMAIL_MFA_OTP_PREFIX + user.getId());
     }
 
-    public Map<String, String> verifyEmailOTPToEnableEmailMFA(String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        checkMFAAndEmailMFAEnabledGlobally();
-        try {
-            ValidationUtility.validateOTP(otp, "OTP");
-        } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid OTP");
-        }
-        var user = UserUtility.getCurrentAuthenticatedUser();
-        if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) throw new BadRequestException("Email MFA is already enabled");
-        verifyOTPToToggleEmailMfa(user, otp);
-        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-        user.enableMfaMethod(UserModel.MfaType.EMAIL);
-        user.setUpdatedBy("SELF");
-        jwtUtility.revokeTokens(user);
-        userRepo.save(user);
-        return Map.of("message", "Email MFA enabled successfully. Please log in again to continue");
+    private byte[] generateQRCodeForAuthenticatorApp(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, WriterException {
+        return QRUtility.generateQRCode(TOTPUtility.generateTOTPUrl("God Level Security", user.getUsername(), generateAuthenticatorAppSecret(user)));
     }
 
-    private void verifyOTPToToggleEmailMfa(UserModel user,
-                                           String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    private String generateAuthenticatorAppSecret(UserModel user) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var secret = TOTPUtility.generateBase32Secret();
+        redisService.save(getEncryptedSecretKey(user), authenticatorAppMFASecretRandomConverter.encrypt(secret), RedisService.DEFAULT_TTL);
+        return secret;
+    }
+
+    private String getEncryptedSecretKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return authenticatorAppMFASecretStaticConverter.encrypt(AUTHENTICATOR_APP_SECRET_PREFIX + user.getId());
+    }
+
+    public Map<String, String> verifyToggleMFA(String type,
+                                               String toggle,
+                                               String otpTotp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var toggleEnabled = validateToggle(toggle);
+        var user = UserUtility.getCurrentAuthenticatedUser();
+        return proceedToVerifyToggleMFA(user, validateType(type, user, toggleEnabled), toggleEnabled, otpTotp);
+    }
+
+    private Map<String, String> proceedToVerifyToggleMFA(UserModel user,
+                                                         UserModel.MfaType type,
+                                                         boolean toggleEnabled,
+                                                         String otpTotp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        if (toggleEnabled) {
+            switch (type) {
+                case UserModel.MfaType.EMAIL -> {
+                    return verifyOTPToToggleEmailMfa(user, otpTotp, true);
+                }
+                case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                    return verifyTOTPToEnableAuthenticatorApp(user, otpTotp);
+                }
+            }
+        } else {
+            switch (type) {
+                case UserModel.MfaType.EMAIL -> {
+                    return verifyOTPToToggleEmailMfa(user, otpTotp, false);
+                }
+                case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                    return verifyTOTPToDisableAuthenticatorAppMFA(user, otpTotp);
+                }
+            }
+        }
+        throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+    }
+
+    private Map<String, String> verifyOTPToToggleEmailMfa(UserModel user,
+                                                          String otp,
+                                                          boolean toggle) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        validateOTPTOTP(otp);
         var encryptedEmailMFAOTPKey = getEncryptedEmailMFAOTPKey(user);
         var encryptedOTP = redisService.get(encryptedEmailMFAOTPKey);
         if (encryptedOTP != null) {
             if (emailOTPRandomConverter.decrypt((String) encryptedOTP, String.class).equals(otp)) {
-                redisService.delete(encryptedEmailMFAOTPKey);
-                return;
+                try {
+                    redisService.delete(encryptedEmailMFAOTPKey);
+                } catch (Exception ignored) {
+                }
+                user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+                if (toggle) user.enableMfaMethod(UserModel.MfaType.EMAIL);
+                else user.disableMfaMethod(UserModel.MfaType.EMAIL);
+                user.setUpdatedBy("SELF");
+                jwtUtility.revokeTokens(user);
+                userRepo.save(user);
+                if (toggle) return Map.of("message", "Email MFA enabled successfully. Please log in again to continue");
+                else return Map.of("message", "Email MFA disabled successfully. Please log in again to continue");
             }
             throw new BadRequestException("Invalid OTP");
         }
         throw new BadRequestException("Invalid OTP");
+    }
+
+    private void validateOTPTOTP(String otpTotp) {
+        try {
+            ValidationUtility.validateOTP(otpTotp, "OTP/TOTP");
+        } catch (BadRequestException ex) {
+            throw new BadRequestException("Invalid OTP/TOTP");
+        }
+    }
+
+    private Map<String, String> verifyTOTPToEnableAuthenticatorApp(UserModel user,
+                                                                   String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        validateOTPTOTP(totp);
+        var encryptedSecretKey = getEncryptedSecretKey(user);
+        var encryptedSecret = redisService.get(encryptedSecretKey);
+        if (encryptedSecret != null) {
+            var secret = authenticatorAppMFASecretRandomConverter.decrypt((String) encryptedSecret, String.class);
+            if (TOTPUtility.verifyTOTP(secret, totp)) {
+                try {
+                    redisService.delete(encryptedSecretKey);
+                } catch (Exception ignored) {
+                }
+                user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+                user.enableMfaMethod(UserModel.MfaType.AUTHENTICATOR_APP);
+                user.setAuthAppSecret(authenticatorAppSecretRandomConverter.encrypt(secret));
+                user.setUpdatedBy("SELF");
+                jwtUtility.revokeTokens(user);
+                userRepo.save(user);
+                return Map.of("message", "Authenticator app MFA enabled successfully. Please log in again to continue");
+            }
+            throw new BadRequestException("Invalid TOTP");
+        }
+        throw new BadRequestException("Invalid TOTP");
+    }
+
+    private Map<String, String> verifyTOTPToDisableAuthenticatorAppMFA(UserModel user,
+                                                                       String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        validateOTPTOTP(totp);
+        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
+        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp))
+            throw new BadRequestException("Invalid TOTP");
+        user.disableMfaMethod(UserModel.MfaType.AUTHENTICATOR_APP);
+        user.setAuthAppSecret(null);
+        user.setUpdatedBy("SELF");
+        jwtUtility.revokeTokens(user);
+        userRepo.save(user);
+        return Map.of("message", "Authenticator app MFA disabled successfully. Please log in again to continue");
     }
 
     public Map<String, String> sendEmailOTPToVerifyEmailMFAToLogin(String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -290,93 +426,6 @@ public class AuthenticationService {
         userRepo.save(user);
     }
 
-    public Map<String, String> sendEmailOTPToDisableEmailMFA() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        checkMFAAndEmailMFAEnabledGlobally();
-        var user = UserUtility.getCurrentAuthenticatedUser();
-        if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL))
-            throw new BadRequestException("Email MFA is already disabled");
-        mailService.sendOtpAsync(user.getEmail(), "OTP to disable email MFA", generateOTPForEmailMFA(user));
-        return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
-    }
-
-    public Map<String, String> verifyEmailOTPToDisableEmailMFA(String otp,
-                                                               String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        checkMFAAndEmailMFAEnabledGlobally();
-        try {
-            ValidationUtility.validateOTP(otp, "OTP");
-            ValidationUtility.validatePassword(password);
-        } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid OTP or password");
-        }
-        var user = UserUtility.getCurrentAuthenticatedUser();
-        if (!user.hasMfaEnabled(UserModel.MfaType.EMAIL))
-            throw new BadRequestException("Email MFA is already disabled");
-        verifyOTPToToggleEmailMfa(user, otp);
-        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-        if (!passwordEncoder.matches(password, user.getPassword())) throw new BadRequestException("Invalid password");
-        user.disableMfaMethod(UserModel.MfaType.EMAIL);
-        user.setUpdatedBy("SELF");
-        jwtUtility.revokeTokens(user);
-        userRepo.save(user);
-        return Map.of("message", "Email MFA disabled successfully. Please log in again to continue");
-    }
-
-    public byte[] generateQRCodeForAuthenticatorApp() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, WriterException {
-        UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
-        var user = UserUtility.getCurrentAuthenticatedUser();
-        if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
-            throw new BadRequestException("Authenticator app MFA is already enabled");
-        return QRUtility.generateQRCode(TOTPUtility.generateTOTPUrl("God Level Security", user.getUsername(), generateAuthenticatorAppSecret(user)));
-    }
-
-    private String generateAuthenticatorAppSecret(UserModel user) throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var secret = TOTPUtility.generateBase32Secret();
-        redisService.save(getEncryptedSecretKey(user), authenticatorAppMFASecretRandomConverter.encrypt(secret), RedisService.DEFAULT_TTL);
-        return secret;
-    }
-
-    private String getEncryptedSecretKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return authenticatorAppMFASecretStaticConverter.encrypt(AUTHENTICATOR_APP_SECRET_PREFIX + user.getId());
-    }
-
-    public Map<String, String> verifyTOTPToSetupAuthenticatorApp(String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
-        try {
-            ValidationUtility.validateOTP(totp, "TOTP");
-        } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid TOTP");
-        }
-        var user = UserUtility.getCurrentAuthenticatedUser();
-        if (user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
-            throw new BadRequestException("Authenticator app MFA is already enabled");
-        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-        verifyTOTP(user, totp);
-        jwtUtility.revokeTokens(user);
-        userRepo.save(user);
-        return Map.of("message", "Authenticator app MFA enabled successfully. Please log in again to continue");
-    }
-
-    private void verifyTOTP(UserModel user,
-                            String totp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var encryptedSecretKey = getEncryptedSecretKey(user);
-        var encryptedSecret = redisService.get(encryptedSecretKey);
-        if (encryptedSecret != null) {
-            var secret = authenticatorAppMFASecretRandomConverter.decrypt((String) encryptedSecret, String.class);
-            if (TOTPUtility.verifyTOTP(secret, totp)) {
-                user.enableMfaMethod(UserModel.MfaType.AUTHENTICATOR_APP);
-                user.setAuthAppSecret(authenticatorAppSecretRandomConverter.encrypt(secret));
-                user.setUpdatedBy("SELF");
-                try {
-                    redisService.delete(encryptedSecretKey);
-                } catch (Exception ignored) {
-                }
-                return;
-            }
-            throw new BadRequestException("Invalid TOTP");
-        }
-        throw new BadRequestException("Invalid TOTP");
-    }
-
     public Map<String, Object> verifyTOTPToLogin(String totp,
                                                  String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
         UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
@@ -401,29 +450,5 @@ public class AuthenticationService {
         } catch (Exception ignored) {
         }
         return jwtUtility.generateTokens(user);
-    }
-
-    public Map<String, String> verifyTOTPToDisableAuthenticatorAppMFA(String totp,
-                                                                      String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
-        try {
-            ValidationUtility.validateOTP(totp, "TOTP");
-            ValidationUtility.validatePassword(password);
-        } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid TOTP or password");
-        }
-        var user = UserUtility.getCurrentAuthenticatedUser();
-        if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
-            throw new BadRequestException("Authenticator app MFA is already disabled");
-        user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp))
-            throw new BadRequestException("Invalid TOTP");
-        if (!passwordEncoder.matches(password, user.getPassword())) throw new BadRequestException("Invalid password");
-        user.disableMfaMethod(UserModel.MfaType.AUTHENTICATOR_APP);
-        user.setAuthAppSecret(null);
-        user.setUpdatedBy("SELF");
-        jwtUtility.revokeTokens(user);
-        userRepo.save(user);
-        return Map.of("message", "Authenticator app MFA disabled successfully. Please log in again to continue");
     }
 }

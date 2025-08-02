@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ChangePwdUsingOldPwdDto extends ResetPwdDto {
+public class ChangePwdDto extends ResetPwdDto {
     private String oldPassword;
     private String otpTotp;
 }

@@ -74,19 +74,7 @@ public class AuthenticationController {
     @PostMapping("/MFA/verify/MFA/toLogin")
     public ResponseEntity<Map<String, Object>> verifyMFAToLogin(@RequestParam String type,
                                                                 @RequestParam String stateToken,
-                                                                @RequestParam String otpTotp) {
+                                                                @RequestParam String otpTotp) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(authenticationService.verifyMFAToLogin(type, stateToken, otpTotp));
-    }
-
-    @PostMapping("/MFA/verify/email/OTP/toLogin")
-    public ResponseEntity<Map<String, Object>> verifyEmailOTPToLogin(@RequestParam String otp,
-                                                                     @RequestParam String stateToken) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.verifyEmailOTPToLogin(otp, stateToken));
-    }
-
-    @PostMapping("/MFA/verify/TOTP/toLogin")
-    public ResponseEntity<Map<String, Object>> verifyTOTPToLogin(@RequestParam String totp,
-                                                                 @RequestParam String stateToken) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(authenticationService.verifyTOTPToLogin(totp, stateToken));
     }
 }

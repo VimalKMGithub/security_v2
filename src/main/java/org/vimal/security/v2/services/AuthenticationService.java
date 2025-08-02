@@ -420,55 +420,45 @@ public class AuthenticationService {
         var encryptedStateTokenMappingKey = getEncryptedStateTokenMappingKey(stateToken);
         var user = userRepo.findById(getUserIdFromEncryptedStateTokenMappingKey(encryptedStateTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid state token"));
         var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
-//        var user = getUser(stateToken);
-//        var mfaType = UserModel.MfaType.valueOf(type.toUpperCase());
-//        switch (mfaType) {
-//            case UserModel.MfaType.EMAIL -> {
-//                return verifyEmailOTPToLogin(otpTotp, stateToken);
-//            }
-//            case UserModel.MfaType.AUTHENTICATOR_APP -> {
-//                return verifyTOTPToLogin(otpTotp, stateToken);
-//            }
-//            default ->
-//                    throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
-//        }
+        switch (mfaType) {
+            case UserModel.MfaType.EMAIL -> {
+                if (user.getEnabledMfaMethods().isEmpty()) {
+                    if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
+                        return verifyEmailOTPToLogin(user, otpTotp, encryptedStateTokenMappingKey);
+                    }
+                    throw new BadRequestException("Email MFA is not enabled");
+                } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
+                    if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                        throw new ServiceUnavailableException("Email MFA is disabled globally");
+                    return verifyEmailOTPToLogin(user, otpTotp, encryptedStateTokenMappingKey);
+                } else throw new BadRequestException("Email MFA is not enabled");
+            }
+            case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+                    throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
+                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                    throw new BadRequestException("Authenticator app MFA is not enabled");
+                return verifyAuthenticatorAppTOTPToLogin(user, otpTotp, encryptedStateTokenMappingKey);
+            }
+            default ->
+                    throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+        }
     }
 
-    public Map<String, Object> verifyEmailOTPToLogin(String otp,
-                                                     String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
-            throw new ServiceUnavailableException("MFA is disabled globally");
-        var forcedMFA = unleash.isEnabled(FeatureFlags.FORCE_MFA.name());
-        if (!forcedMFA) if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-            throw new ServiceUnavailableException("Email MFA is disabled globally");
-        try {
-            ValidationUtility.validateOTP(otp, "OTP");
-            ValidationUtility.validateUuid(stateToken, "State token");
-        } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid OTP or state token");
-        }
-        var encryptedStateTokenMappingKey = getEncryptedStateTokenMappingKey(stateToken);
-        var user = userRepo.findById(getUserIdFromEncryptedStateTokenMappingKey(encryptedStateTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid state token"));
-        if (!forcedMFA && !user.hasMfaEnabled(UserModel.MfaType.EMAIL))
-            throw new BadRequestException("Email MFA is not enabled");
-        verifyOTPToLogin(user, otp);
-        try {
-            redisService.deleteAll(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey));
-        } catch (Exception ignored) {
-        }
-        return jwtUtility.generateTokens(user);
-    }
-
-    private void verifyOTPToLogin(UserModel user,
-                                  String otp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    private Map<String, Object> verifyEmailOTPToLogin(UserModel user,
+                                                      String otp,
+                                                      String encryptedStateTokenMappingKey) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
         if (user.isAccountLocked() && user.getLastLockedAt().plus(1, ChronoUnit.DAYS).isAfter(Instant.now()))
             throw new LockedException("Account is locked due to too many failed mfa attempts. Please try again later");
         var encryptedEmailMFAOTPKey = getEncryptedEmailMFAOTPKey(user);
         var encryptedOTP = redisService.get(encryptedEmailMFAOTPKey);
         if (encryptedOTP != null) {
             if (emailOTPRandomConverter.decrypt((String) encryptedOTP, String.class).equals(otp)) {
-                redisService.delete(encryptedEmailMFAOTPKey);
-                return;
+                try {
+                    redisService.deleteAll(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey, encryptedEmailMFAOTPKey));
+                } catch (Exception ignored) {
+                }
+                return jwtUtility.generateTokens(user);
             }
             handleFailedMFALoginAttempt(user);
             throw new BadRequestException("Invalid OTP");
@@ -482,29 +472,19 @@ public class AuthenticationService {
         userRepo.save(user);
     }
 
-    public Map<String, Object> verifyTOTPToLogin(String totp,
-                                                 String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
-        UserUtility.checkMFAAndAuthenticatorAppMFAEnabledGlobally(unleash);
-        try {
-            ValidationUtility.validateOTP(totp, "TOTP");
-            ValidationUtility.validateUuid(stateToken, "State token");
-        } catch (BadRequestException ex) {
-            throw new BadRequestException("Invalid TOTP or state token");
-        }
-        var encryptedStateTokenMappingKey = getEncryptedStateTokenMappingKey(stateToken);
-        var user = userRepo.findById(getUserIdFromEncryptedStateTokenMappingKey(encryptedStateTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid state token"));
-        if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
-            throw new BadRequestException("Authenticator app MFA is not enabled");
+    private Map<String, Object> verifyAuthenticatorAppTOTPToLogin(UserModel user,
+                                                                  String totp,
+                                                                  String encryptedStateTokenMappingKey) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException, JoseException {
         if (user.isAccountLocked() && user.getLastLockedAt().plus(1, ChronoUnit.DAYS).isAfter(Instant.now()))
             throw new LockedException("Account is locked due to too many failed mfa attempts. Please try again later");
-        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp)) {
-            handleFailedMFALoginAttempt(user);
-            throw new BadRequestException("Invalid TOTP");
+        if (TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp)) {
+            try {
+                redisService.deleteAll(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey));
+            } catch (Exception ignored) {
+            }
+            return jwtUtility.generateTokens(user);
         }
-        try {
-            redisService.deleteAll(Set.of(getEncryptedStateTokenKey(user), encryptedStateTokenMappingKey));
-        } catch (Exception ignored) {
-        }
-        return jwtUtility.generateTokens(user);
+        handleFailedMFALoginAttempt(user);
+        throw new BadRequestException("Invalid TOTP");
     }
 }

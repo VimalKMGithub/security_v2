@@ -567,18 +567,37 @@ public class UserService {
         throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
     }
 
-    public Map<String, String> sendOTPToDeleteAccount() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public Map<String, String> deleteAccountMethodSelection(String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.ACCOUNT_DELETION_ALLOWED.name())) {
-            if (!unleash.isEnabled(FeatureFlags.MFA.name()))
-                throw new ServiceUnavailableException("MFA is disabled globally");
-            var forcedMFA = unleash.isEnabled(FeatureFlags.FORCE_MFA.name());
-            if (!forcedMFA) if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
-                throw new ServiceUnavailableException("Email MFA is disabled globally");
+            UserUtility.validateTypeExistence(method);
+            UserUtility.checkMFAEnabledGlobally(unleash);
             var user = UserUtility.getCurrentAuthenticatedUser();
-            if (!forcedMFA && !user.hasMfaEnabled(UserModel.MfaType.EMAIL))
-                throw new BadRequestException("Email MFA is not enabled");
-            mailService.sendOtpAsync(user.getEmail(), "OTP for account deletion", generateOTPForAccountDeletion(user));
-            return Map.of("message", "OTP sent to your email. Please check your email to delete your account");
+            var methodType = UserModel.MfaType.valueOf(method.toUpperCase());
+            switch (methodType) {
+                case UserModel.MfaType.EMAIL -> {
+                    if (user.getEnabledMfaMethods().isEmpty()) {
+                        if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
+                            mailService.sendOtpAsync(user.getEmail(), "OTP for account deletion", generateOTPForAccountDeletion(user));
+                            return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+                        }
+                        throw new BadRequestException("Email MFA is not enabled");
+                    } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
+                        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                            throw new ServiceUnavailableException("Email MFA is disabled globally");
+                        mailService.sendOtpAsync(user.getEmail(), "OTP for account deletion", generateOTPForAccountDeletion(user));
+                        return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
+                    } else throw new BadRequestException("Email MFA is not enabled");
+                }
+                case UserModel.MfaType.AUTHENTICATOR_APP -> {
+                    if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+                        throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
+                    if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                        throw new BadRequestException("Authenticator app MFA is not enabled");
+                    return Map.of("message", "Please proceed to verify TOTP");
+                }
+                default ->
+                        throw new BadRequestException("Unsupported MFA type: " + method + ". Supported types: " + UserUtility.MFA_METHODS);
+            }
         }
         throw new ServiceUnavailableException("Account deletion is currently disabled. Please try again later");
     }
@@ -591,6 +610,10 @@ public class UserService {
 
     private String getEncryptedEmailOTPToDeleteAccountKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return emailOTPToDeleteAccountStaticConverter.encrypt(EMAIL_OTP_TO_DELETE_ACCOUNT_PREFIX + user.getId());
+    }
+
+    public Map<String, String> verifyDeleteAccount(String otpTotp,
+                                                   String method) {
     }
 
     public Map<String, String> verifyOTPToDeleteAccount(String otp,

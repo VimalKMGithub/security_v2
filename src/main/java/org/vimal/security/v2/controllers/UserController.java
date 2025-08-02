@@ -89,21 +89,15 @@ public class UserController {
         return userService.deleteAccount(password);
     }
 
-    @PostMapping("/send/OTP/toDelete/account")
-    public ResponseEntity<Map<String, String>> sendOTPToDeleteAccount() throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(userService.sendOTPToDeleteAccount());
+    @PostMapping("/delete/account/methodSelection")
+    public ResponseEntity<Map<String, String>> deleteAccountMethodSelection(@RequestParam String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(userService.deleteAccountMethodSelection(method));
     }
 
-    @DeleteMapping("/verify/OTP/toDelete/account")
-    public ResponseEntity<Map<String, String>> verifyOTPToDeleteAccount(@RequestParam String otp,
-                                                                        @RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(userService.verifyOTPToDeleteAccount(otp, password));
-    }
-
-    @DeleteMapping("/verify/TOTP/toDelete/account")
-    public ResponseEntity<Map<String, String>> verifyTOTPToDeleteAccount(@RequestParam String totp,
-                                                                         @RequestParam String password) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return ResponseEntity.ok(userService.verifyTOTPToDeleteAccount(totp, password));
+    @DeleteMapping("/verify/delete/account")
+    public ResponseEntity<Map<String, String>> verifyDeleteAccount(@RequestParam String otpTotp,
+                                                                   @RequestParam String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return ResponseEntity.ok(userService.verifyDeleteAccount(otpTotp, method));
     }
 
     @PutMapping("/update/details")

@@ -48,14 +48,9 @@ public class SecurityConfig {
             API_VERSION + AUTH + MFA + "/verifyTo/login",
             API_VERSION + USER + "/register",
             API_VERSION + USER + "/verifyEmail",
-            API_VERSION + USER + "/resend/emailVerification/link/username",
-            API_VERSION + USER + "/resend/emailVerification/link/email",
             API_VERSION + USER + "/resend/emailVerification/link",
-            API_VERSION + USER + "/forgot/password/username",
-            API_VERSION + USER + "/forgot/password/email",
             API_VERSION + USER + "/forgot/password",
-            API_VERSION + USER + "/reset/password/username",
-            API_VERSION + USER + "/reset/password/email",
+            API_VERSION + USER + "/forgot/password/methodSelection",
             API_VERSION + USER + "/reset/password"
     };
     private final JWTFilterUtility jwtFilterUtility;

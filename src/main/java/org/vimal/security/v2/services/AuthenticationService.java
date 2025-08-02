@@ -11,15 +11,12 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.vimal.security.v2.converter.*;
 import org.vimal.security.v2.enums.FeatureFlags;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.exceptions.ServiceUnavailableException;
-import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.UserRepo;
 import org.vimal.security.v2.utils.*;
@@ -58,7 +55,6 @@ public class AuthenticationService {
     private final AuthenticatorAppMFASecretStaticConverter authenticatorAppMFASecretStaticConverter;
     private final AuthenticatorAppMFASecretRandomConverter authenticatorAppMFASecretRandomConverter;
     private final AuthenticatorAppSecretRandomConverter authenticatorAppSecretRandomConverter;
-    private final PasswordEncoder passwordEncoder;
 
     public Map<String, Object> login(String usernameOrEmail,
                                      String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -81,7 +77,7 @@ public class AuthenticationService {
                                              String password) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         try {
             var authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), password));
-            return handleSuccessfulLogin(authentication);
+            return handleSuccessfulLogin(user);
         } catch (BadCredentialsException ex) {
             if (ex.getCause() instanceof UsernameNotFoundException) throw ex;
             handleFailedLogin(user);
@@ -89,8 +85,7 @@ public class AuthenticationService {
         }
     }
 
-    private Map<String, Object> handleSuccessfulLogin(Authentication authentication) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var user = ((UserDetailsImpl) authentication.getPrincipal()).getUserModel();
+    private Map<String, Object> handleSuccessfulLogin(UserModel user) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.MFA.name())) {
             if (UserUtility.shouldDoMFA(user, unleash))
                 return Map.of("message", "MFA required", "state_token", generateStateToken(user), "mfa_methods", user.getEnabledMfaMethods());

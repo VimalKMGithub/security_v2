@@ -184,7 +184,7 @@ public class AuthenticationService {
         if (toggleEnabled) {
             switch (type) {
                 case UserModel.MfaType.EMAIL -> {
-                    mailService.sendOtpAsync(user.getEmail(), "OTP to enable email MFA", generateOTPForEmailMFA(user));
+                    mailService.sendEmailAsync(user.getEmail(), "OTP to enable email MFA", generateOTPForEmailMFA(user), MailService.MailType.OTP);
                     return ResponseEntity.ok(Map.of("message", "OTP sent to your registered email address. Please check your email to continue"));
                 }
                 case UserModel.MfaType.AUTHENTICATOR_APP -> {
@@ -194,7 +194,7 @@ public class AuthenticationService {
         } else {
             switch (type) {
                 case UserModel.MfaType.EMAIL -> {
-                    mailService.sendOtpAsync(user.getEmail(), "OTP to disable email MFA", generateOTPForEmailMFA(user));
+                    mailService.sendEmailAsync(user.getEmail(), "OTP to disable email MFA", generateOTPForEmailMFA(user), MailService.MailType.OTP);
                     return ResponseEntity.ok(Map.of("message", "OTP sent to your registered email address. Please check your email to continue"));
                 }
                 case UserModel.MfaType.AUTHENTICATOR_APP -> {
@@ -351,14 +351,14 @@ public class AuthenticationService {
             case UserModel.MfaType.EMAIL -> {
                 if (user.getEnabledMfaMethods().isEmpty()) {
                     if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
-                        mailService.sendOtpAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user));
+                        mailService.sendEmailAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user), MailService.MailType.OTP);
                         return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
                     }
                     throw new BadRequestException("Email MFA is not enabled");
                 } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
                     if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
                         throw new ServiceUnavailableException("Email MFA is disabled globally");
-                    mailService.sendOtpAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user));
+                    mailService.sendEmailAsync(user.getEmail(), "OTP to verify email MFA to login", generateOTPForEmailMFA(user), MailService.MailType.OTP);
                     return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
                 } else throw new BadRequestException("Email MFA is not enabled");
             }

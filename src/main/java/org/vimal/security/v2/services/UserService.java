@@ -74,7 +74,7 @@ public class UserService {
             var shouldVerifyRegisteredEmail = unleash.isEnabled(FeatureFlags.REGISTRATION_EMAIL_VERIFICATION.name());
             user.setEmailVerified(!shouldVerifyRegisteredEmail);
             if (shouldVerifyRegisteredEmail) {
-                mailService.sendLinkEmailAsync(user.getEmail(), "Email verification link after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
+                mailService.sendEmailAsync(user.getEmail(), "Email verification link after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user), MailService.MailType.LINK);
                 return ResponseEntity.ok(Map.of("message", "Registration successful. Please check your email for verification link", "user", userRepo.save(user)));
             }
             return ResponseEntity.ok(Map.of("message", "Registration successful", "user", userRepo.save(user)));
@@ -188,7 +188,7 @@ public class UserService {
 
     private Map<String, String> proceedResendEmailVerificationLink(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
-        mailService.sendLinkEmailAsync(user.getEmail(), "Resending email verification link after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user));
+        mailService.sendEmailAsync(user.getEmail(), "Resending email verification link after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user), MailService.MailType.LINK);
         return Map.of("message", "Email verification link resent successfully. Please check your email");
     }
 
@@ -212,7 +212,7 @@ public class UserService {
             throw new BadRequestException("MFA method: '" + method + "' is not enabled for user");
         switch (methodType) {
             case UserModel.MfaType.EMAIL -> {
-                mailService.sendOtpAsync(user.getEmail(), "OTP for resetting password", generateOTPForForgotPassword(user));
+                mailService.sendEmailAsync(user.getEmail(), "OTP for resetting password", generateOTPForForgotPassword(user), MailService.MailType.OTP);
                 return Map.of("Message", "OTP sent to your email. Please check your email to reset your password");
             }
             case UserModel.MfaType.AUTHENTICATOR_APP -> {
@@ -302,6 +302,11 @@ public class UserService {
         throw new BadRequestException("Invalid OTP");
     }
 
+    private void emailConfirmationOnPasswordReset(UserModel user) {
+        if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_PASSWORD_RESET.name())) {
+        }
+    }
+
     private void selfChangePassword(UserModel user,
                                     String password) {
         user.changePassword(passwordEncoder.encode(password));
@@ -348,14 +353,14 @@ public class UserService {
             case UserModel.MfaType.EMAIL -> {
                 if (user.getEnabledMfaMethods().isEmpty()) {
                     if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
-                        mailService.sendOtpAsync(user.getEmail(), "OTP for password change", generateOTPForPasswordChange(user));
+                        mailService.sendEmailAsync(user.getEmail(), "OTP for password change", generateOTPForPasswordChange(user), MailService.MailType.OTP);
                         return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
                     }
                     throw new BadRequestException("Email MFA is not enabled");
                 } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
                     if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
                         throw new ServiceUnavailableException("Email MFA is disabled globally");
-                    mailService.sendOtpAsync(user.getEmail(), "OTP for password change", generateOTPForPasswordChange(user));
+                    mailService.sendEmailAsync(user.getEmail(), "OTP for password change", generateOTPForPasswordChange(user), MailService.MailType.OTP);
                     return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
                 } else throw new BadRequestException("Email MFA is not enabled");
             }
@@ -458,8 +463,8 @@ public class UserService {
             if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
                 throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
             storeNewEmailForEmailChange(user, newEmail);
-            mailService.sendOtpAsync(newEmail, "OTP for email change", generateOTPForEmailChange(user));
-            mailService.sendOtpAsync(user.getEmail(), "OTP for email change for old email", generateOTPForEmailChangeForOldEmail(user));
+            mailService.sendEmailAsync(newEmail, "OTP for email change", generateOTPForEmailChange(user), MailService.MailType.OTP);
+            mailService.sendEmailAsync(user.getEmail(), "OTP for email change for old email", generateOTPForEmailChangeForOldEmail(user), MailService.MailType.OTP);
             return Map.of("message", "OTP sent to your new & old email. Please check your email to verify your email change");
         }
         throw new ServiceUnavailableException("Email change is currently disabled. Please try again later");
@@ -569,7 +574,7 @@ public class UserService {
         user.recordAccountDeletion(true, "SELF");
         userRepo.save(user);
         if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_ACCOUNT_DELETION.name()))
-            mailService.sendAccountDeletionConfirmationAsync(user.getEmail(), "Account deletion confirmation");
+            mailService.sendEmailAsync(user.getEmail(), "Account deletion confirmation", "", MailService.MailType.ACCOUNT_DELETION_CONFIRMATION);
     }
 
     public Map<String, String> deleteAccountMethodSelection(String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -582,14 +587,14 @@ public class UserService {
                 case UserModel.MfaType.EMAIL -> {
                     if (user.getEnabledMfaMethods().isEmpty()) {
                         if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
-                            mailService.sendOtpAsync(user.getEmail(), "OTP for account deletion", generateOTPForAccountDeletion(user));
+                            mailService.sendEmailAsync(user.getEmail(), "OTP for account deletion", generateOTPForAccountDeletion(user), MailService.MailType.OTP);
                             return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
                         }
                         throw new BadRequestException("Email MFA is not enabled");
                     } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
                         if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
                             throw new ServiceUnavailableException("Email MFA is disabled globally");
-                        mailService.sendOtpAsync(user.getEmail(), "OTP for account deletion", generateOTPForAccountDeletion(user));
+                        mailService.sendEmailAsync(user.getEmail(), "OTP for account deletion", generateOTPForAccountDeletion(user), MailService.MailType.OTP);
                         return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
                     } else throw new BadRequestException("Email MFA is not enabled");
                 }

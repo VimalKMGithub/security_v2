@@ -14,7 +14,8 @@ public class MailService {
         LINK,
         ACCOUNT_DELETION_CONFIRMATION,
         PASSWORD_RESET_CONFIRMATION,
-        SELF_PASSWORD_CHANGE_CONFIRMATION
+        SELF_PASSWORD_CHANGE_CONFIRMATION,
+        SELF_EMAIL_CHANGE_CONFIRMATION
     }
 
     private static final String OTP_TEMPLATE = """
@@ -37,6 +38,10 @@ public class MailService {
             Your password has been changed successfully.
             If this was not done by you, please contact support immediately.
             """;
+    private static final String SELF_EMAIL_CHANGE_CONFIRMATION_TEMPLATE = """
+            Your email has been changed successfully.
+            If this was not done by you, please contact support immediately.
+            """;
 
     private void sendEmail(String to,
                            String subject,
@@ -54,6 +59,7 @@ public class MailService {
             case ACCOUNT_DELETION_CONFIRMATION -> ACCOUNT_DELETION_CONFIRMATION_TEMPLATE;
             case PASSWORD_RESET_CONFIRMATION -> PASSWORD_RESET_CONFIRMATION_TEMPLATE;
             case SELF_PASSWORD_CHANGE_CONFIRMATION -> SELF_PASSWORD_CHANGE_CONFIRMATION_TEMPLATE;
+            case SELF_EMAIL_CHANGE_CONFIRMATION -> SELF_EMAIL_CHANGE_CONFIRMATION_TEMPLATE;
         };
         sendEmail(to, subject, text);
     }

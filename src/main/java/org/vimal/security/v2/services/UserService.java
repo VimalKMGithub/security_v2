@@ -546,6 +546,7 @@ public class UserService {
             user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
             if (!passwordEncoder.matches(password, user.getPassword()))
                 throw new BadRequestException("Invalid password");
+            var oldEmail = user.getEmail();
             user.setEmail(newEmail);
             user.setRealEmail(sanitizedEmail);
             jwtUtility.revokeTokens(user);
@@ -553,6 +554,8 @@ public class UserService {
                 redisService.deleteAll(Set.of(encryptedEmailChangeOTPKey, encryptedEmailChangeForOldEmailOTPKey, encryptedEmailKey));
             } catch (Exception ignored) {
             }
+            if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_EMAIL_CHANGE.name()))
+                mailService.sendEmailAsync(oldEmail, "Email change confirmation", "", MailService.MailType.SELF_EMAIL_CHANGE_CONFIRMATION);
             return Map.of("message", "Email change successful. Please login again to continue", "user", MapperUtility.toUserSummaryDto(userRepo.save(user)));
         }
         throw new ServiceUnavailableException("Email change is currently disabled. Please try again later");

@@ -6,7 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.vimal.security.v2.models.RoleModel;
 
-import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 
 @Getter
@@ -14,6 +14,6 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ResolvedRolesResultDto {
-    private Collection<RoleModel> roles;
+    private Map<String, RoleModel> resolvedRolesMap;
     private Set<String> missingRoles;
 }

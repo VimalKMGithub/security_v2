@@ -73,11 +73,10 @@ public class AdminService {
                 mapOfErrors.put("missing_roles", resolvedRolesResult.getMissingRoles());
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             if (dtos.isEmpty()) return ResponseEntity.ok(Map.of("message", "No users to create"));
-            var resolvedRolesMap = resolvedRolesResult.getRoles().stream().collect(Collectors.toMap(RoleModel::getRoleName, Function.identity()));
             var newUsers = dtos.stream().map(dto -> {
                         if (Objects.isNull(dto.getRoles()) || dto.getRoles().isEmpty())
                             return toUserModel(dto, new HashSet<>(), creator.getUserModel());
-                        var rolesToAssign = dto.getRoles().stream().map(resolvedRolesMap::get).filter(Objects::nonNull).collect(Collectors.toSet());
+                        var rolesToAssign = dto.getRoles().stream().map(resolvedRolesResult.getResolvedRolesMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
                         return toUserModel(dto, rolesToAssign, creator.getUserModel());
                     })
                     .collect(Collectors.toSet());
@@ -173,10 +172,14 @@ public class AdminService {
 
     private ResolvedRolesResultDto resolveRoles(Set<String> roles) {
         if (Objects.isNull(roles) || roles.isEmpty())
-            return new ResolvedRolesResultDto(new HashSet<>(), new HashSet<>());
+            return new ResolvedRolesResultDto(new HashMap<>(), new HashSet<>());
         var foundRoles = roleRepo.findAllById(roles);
-        var foundRoleNames = foundRoles.stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
-        return new ResolvedRolesResultDto(foundRoles, roles.stream().filter(role -> !foundRoleNames.contains(role)).collect(Collectors.toSet()));
+        var resolvedRolesMap = new HashMap<String, RoleModel>();
+        foundRoles.forEach(role -> {
+            roles.remove(role.getRoleName());
+            resolvedRolesMap.put(role.getRoleName(), role);
+        });
+        return new ResolvedRolesResultDto(resolvedRolesMap, roles);
     }
 
     private UserModel toUserModel(UserCreationDto dto,
@@ -579,7 +582,6 @@ public class AdminService {
                                                                                       UserDetailsImpl user,
                                                                                       String userHighestTopRole) {
         var resolvedRolesResult = resolveRoles(userUpdationResult.getRoles());
-        var roleToRolenameMap = resolvedRolesResult.getRoles().stream().collect(Collectors.toMap(RoleModel::getRoleName, Function.identity()));
         var userToUsernameMap = userRepo.findByUsernameIn(userUpdationResult.getOldUsernames()).stream().collect(Collectors.toMap(UserModel::getUsername, Function.identity()));
         var updatedUsers = new HashSet<UserModel>();
         var usersToWhichWeHaveToRevokeTokens = new HashSet<UserModel>();
@@ -611,7 +613,7 @@ public class AdminService {
             if (!userToUpdate.getRoles().isEmpty())
                 userToUpdate.getRoles().forEach(role -> rolesOfUsers.add(role.getRoleName()));
             if (dto.getRoles() != null) {
-                var rolesToAssign = dto.getRoles().stream().map(roleToRolenameMap::get).filter(Objects::nonNull).collect(Collectors.toSet());
+                var rolesToAssign = dto.getRoles().stream().map(resolvedRolesResult.getResolvedRolesMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
                 if (!userToUpdate.getRoles().equals(rolesToAssign)) {
                     userToUpdate.setRoles(rolesToAssign);
                     isUpdated = true;

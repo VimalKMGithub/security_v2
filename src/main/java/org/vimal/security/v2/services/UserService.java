@@ -295,6 +295,7 @@ public class UserService {
                 } catch (Exception ignored) {
                 }
                 selfChangePassword(user, dto.getPassword());
+                emailConfirmationOnPasswordReset(user);
                 return Map.of("message", "Password reset successful");
             }
             throw new BadRequestException("Invalid OTP");
@@ -304,6 +305,7 @@ public class UserService {
 
     private void emailConfirmationOnPasswordReset(UserModel user) {
         if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_PASSWORD_RESET.name())) {
+            mailService.sendEmailAsync(user.getEmail(), "Password reset confirmation", "", MailService.MailType.PASSWORD_RESET_CONFIRMATION);
         }
     }
 
@@ -319,6 +321,7 @@ public class UserService {
         if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), dto.getOtpTotp()))
             throw new BadRequestException("Invalid TOTP");
         selfChangePassword(user, dto.getPassword());
+        emailConfirmationOnPasswordReset(user);
         return Map.of("message", "Password reset successful");
     }
 

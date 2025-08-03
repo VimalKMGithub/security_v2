@@ -12,7 +12,8 @@ public class MailService {
     public enum MailType {
         OTP,
         LINK,
-        ACCOUNT_DELETION_CONFIRMATION
+        ACCOUNT_DELETION_CONFIRMATION,
+        PASSWORD_RESET_CONFIRMATION
     }
 
     private static final String OTP_TEMPLATE = """
@@ -30,6 +31,11 @@ public class MailService {
             If this was a mistake or you want to recover your account or not done by you or if you want to remove your account from backup immediately, please contact support.
             """;
 
+    private static final String PASSWORD_RESET_CONFIRMATION_TEMPLATE = """
+            Your password has been reset successfully.
+            If this was not done by you, please contact support immediately.
+            """;
+
     private void sendEmail(String to,
                            String subject,
                            String text) {
@@ -40,10 +46,11 @@ public class MailService {
                            String subject,
                            String value,
                            MailType mailType) {
-        String text = switch (mailType) {
+        var text = switch (mailType) {
             case OTP -> String.format(OTP_TEMPLATE, value);
             case LINK -> String.format(LINK_TEMPLATE, value);
             case ACCOUNT_DELETION_CONFIRMATION -> ACCOUNT_DELETION_CONFIRMATION_TEMPLATE;
+            case PASSWORD_RESET_CONFIRMATION -> PASSWORD_RESET_CONFIRMATION_TEMPLATE;
         };
         sendEmail(to, subject, text);
     }

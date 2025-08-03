@@ -117,4 +117,18 @@ public class ValidationUtility {
         if (!NAME_PATTERN.matcher(lastName).matches())
             throw new BadRequestException("Last Name: '" + lastName + "' is invalid as it can only contain letters, spaces, periods, apostrophes, and hyphens");
     }
+
+    public static void validateRoleAndPermissionName(String name) {
+        validateStringNonNullAndNotEmpty(name, "Role/Permission Name");
+        if (!ROLE_AND_PERMISSION_NAME_PATTERN.matcher(name).matches())
+            throw new BadRequestException("Role/Permission Name: '" + name + "' is invalid as it can only contain letters, numbers, and underscores");
+    }
+
+    public static void validateDescription(String description) {
+        if (Objects.isNull(description)) return;
+        if (description.isBlank()) throw new BadRequestException("Description cannot be blank if provided");
+        validateStringMaxLength(description, "Description", 255);
+        if (!NAME_PATTERN.matcher(description).matches())
+            throw new BadRequestException("Description: '" + description + "' is invalid as it can only contain letters, spaces, periods, apostrophes, and hyphens");
+    }
 }

@@ -16,6 +16,7 @@ import org.vimal.security.v2.exceptions.ServiceUnavailableException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
 import org.vimal.security.v2.models.RoleModel;
 import org.vimal.security.v2.models.UserModel;
+import org.vimal.security.v2.repos.PermissionRepo;
 import org.vimal.security.v2.repos.RoleRepo;
 import org.vimal.security.v2.repos.UserRepo;
 import org.vimal.security.v2.utils.JWTUtility;
@@ -48,6 +49,7 @@ public class AdminService {
     private static final int DEFAULT_MAX_PERMISSIONS_TO_READ_AT_A_TIME = 300;
     private final UserRepo userRepo;
     private final RoleRepo roleRepo;
+    private final PermissionRepo permissionRepo;
     private final PasswordEncoder passwordEncoder;
     private final Unleash unleash;
     private final JWTUtility jwtUtility;
@@ -665,5 +667,72 @@ public class AdminService {
     }
 
     public ResponseEntity<Map<String, Object>> createRoles(Set<RoleCreationUpdationDto> dtos) {
+        var creator = UserUtility.getCurrentAuthenticatedUserDetails();
+        var creatorHighestTopRole = getUserHighestTopRole(creator);
+        var variant = unleash.getVariant(FeatureFlags.ALLOW_CREATE_ROLES.name());
+        if (entryCheck(variant, creatorHighestTopRole)) {
+            checkUserCanCreateRoles(creatorHighestTopRole);
+            validateDtosSizeForRolesCreation(variant, dtos);
+            var roleCreationResult = validateInputsForRoleCreation(dtos);
+            var mapOfErrors = errorsStuffingIfAnyInRoleCreation(roleCreationResult);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            var alreadyExistingRoles = roleRepo.findAllById(roleCreationResult.getRoleNames()).stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
+            if (!alreadyExistingRoles.isEmpty()) mapOfErrors.put("roles_already_exist", alreadyExistingRoles);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            var foundPermissions = permissionRepo.findAllById(roleCreationResult.getPermissions());
+        }
+        throw new ServiceUnavailableException("Creation of roles is currently disabled. Please try again later");
+    }
+
+    private void checkUserCanCreateRoles(String userHighestTopRole) {
+        if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_CREATE_ROLES_BY_USERS_HAVE_PERMISSION_TO_CREATE_ROLES.name()))
+            throw new ServiceUnavailableException("Creation of roles is currently disabled. Please try again later");
+    }
+
+    private void validateDtosSizeForRolesCreation(Variant variant,
+                                                  Set<RoleCreationUpdationDto> dtos) {
+        if (dtos.isEmpty()) throw new BadRequestException("No roles to create");
+        if (variant.isEnabled() && variant.getPayload().isPresent()) {
+            var maxRolesToCreateAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+            if (maxRolesToCreateAtATime < 1) maxRolesToCreateAtATime = DEFAULT_MAX_ROLES_TO_CREATE_AT_A_TIME;
+            if (dtos.size() > maxRolesToCreateAtATime)
+                throw new BadRequestException("Cannot create more than " + maxRolesToCreateAtATime + " roles at a time");
+        } else if (dtos.size() > DEFAULT_MAX_ROLES_TO_CREATE_AT_A_TIME)
+            throw new BadRequestException("Cannot create more than " + DEFAULT_MAX_ROLES_TO_CREATE_AT_A_TIME + " roles at a time");
+    }
+
+    private RoleCreationResultDto validateInputsForRoleCreation(Set<RoleCreationUpdationDto> dtos) {
+        var invalidInputs = new HashSet<String>();
+        var roleNames = new HashSet<String>();
+        var duplicateRoleNamesInDtos = new HashSet<String>();
+        var permissions = new HashSet<String>();
+        dtos.remove(null);
+        dtos.forEach(dto -> {
+            try {
+                ValidationUtility.validateRoleAndPermissionName(dto.getRoleName());
+                if (!roleNames.add(dto.getRoleName())) duplicateRoleNamesInDtos.add(dto.getRoleName());
+            } catch (BadRequestException ex) {
+                invalidInputs.add(ex.getMessage());
+            }
+            try {
+                ValidationUtility.validateDescription(dto.getDescription());
+            } catch (BadRequestException ex) {
+                invalidInputs.add(ex.getMessage());
+            }
+            if (dto.getPermissions() != null && !dto.getPermissions().isEmpty()) {
+                dto.setPermissions(dto.getPermissions().stream().filter(p -> p != null && !p.isBlank()).collect(Collectors.toSet()));
+                if (!dto.getPermissions().isEmpty()) permissions.addAll(dto.getPermissions());
+            }
+        });
+        return new RoleCreationResultDto(invalidInputs, roleNames, duplicateRoleNamesInDtos, permissions);
+    }
+
+    private Map<String, Object> errorsStuffingIfAnyInRoleCreation(RoleCreationResultDto roleCreationResult) {
+        var mapOfErrors = new HashMap<String, Object>();
+        if (!roleCreationResult.getInvalidInputs().isEmpty())
+            mapOfErrors.put("invalid_inputs", roleCreationResult.getInvalidInputs());
+        if (!roleCreationResult.getDuplicateRoleNamesInDtos().isEmpty())
+            mapOfErrors.put("duplicate_role_names_in_request", roleCreationResult.getDuplicateRoleNamesInDtos());
+        return mapOfErrors;
     }
 }

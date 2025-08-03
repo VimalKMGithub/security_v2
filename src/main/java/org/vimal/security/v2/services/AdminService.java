@@ -658,4 +658,7 @@ public class AdminService {
         }
         return new UserUpdationWithNewDetailsResultDto(mapOfErrors, updatedUsers, usersToWhichWeHaveToRevokeTokens);
     }
+
+    public ResponseEntity<Map<String, Object>> createRoles(Set<RoleCreationUpdationDto> dtos) {
+    }
 }

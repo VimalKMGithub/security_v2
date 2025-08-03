@@ -531,12 +531,8 @@ public class AdminService {
         var notAllowedToAssignRoles = validateRolesRestriction(userUpdationResult.getRoles(), userHighestTopRole);
         if (!notAllowedToAssignRoles.isEmpty())
             mapOfErrors.put("not_allowed_to_assign_roles", notAllowedToAssignRoles);
-        var ownUserInInputs = new HashSet<String>();
-        if (userUpdationResult.getUsernames().contains(user.getUsername())) ownUserInInputs.add(user.getUsername());
-        if (userUpdationResult.getEmails().contains(user.getUserModel().getEmail()))
-            ownUserInInputs.add(user.getUserModel().getEmail());
-        if (!ownUserInInputs.isEmpty())
-            mapOfErrors.put("you_cannot_update_your_own_account_using_this_endpoint", ownUserInInputs);
+        if (userUpdationResult.getOldUsernames().contains(user.getUsername()))
+            mapOfErrors.put("you_cannot_update_your_own_account_using_this_endpoint", user.getUsername());
         return mapOfErrors;
     }
 

@@ -281,12 +281,22 @@ public class AuthenticationService {
                 user.setUpdatedBy("SELF");
                 jwtUtility.revokeTokens(user);
                 userRepo.save(user);
+                emailConfirmationOnToggleMFA(user, UserModel.MfaType.EMAIL, toggle);
                 if (toggle) return Map.of("message", "Email MFA enabled successfully. Please log in again to continue");
                 else return Map.of("message", "Email MFA disabled successfully. Please log in again to continue");
             }
             throw new BadRequestException("Invalid OTP");
         }
         throw new BadRequestException("Invalid OTP");
+    }
+
+    private void emailConfirmationOnToggleMFA(UserModel user,
+                                              UserModel.MfaType type,
+                                              boolean toggle) {
+        if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_MFA_ENABLE_DISABLE.name())) {
+            var action = toggle ? "enabled" : "disabled";
+            mailService.sendEmailAsync(user.getEmail(), "MFA " + action + " confirmation", "Your " + type + " MFA has been " + action, MailService.MailType.SELF_MFA_ENABLE_DISABLE_CONFIRMATION);
+        }
     }
 
     private void validateOTPTOTP(String otpTotp) {
@@ -315,6 +325,7 @@ public class AuthenticationService {
                 user.setUpdatedBy("SELF");
                 jwtUtility.revokeTokens(user);
                 userRepo.save(user);
+                emailConfirmationOnToggleMFA(user, UserModel.MfaType.AUTHENTICATOR_APP, true);
                 return Map.of("message", "Authenticator app MFA enabled successfully. Please log in again to continue");
             }
             throw new BadRequestException("Invalid TOTP");
@@ -333,6 +344,7 @@ public class AuthenticationService {
         user.setUpdatedBy("SELF");
         jwtUtility.revokeTokens(user);
         userRepo.save(user);
+        emailConfirmationOnToggleMFA(user, UserModel.MfaType.AUTHENTICATOR_APP, false);
         return Map.of("message", "Authenticator app MFA disabled successfully. Please log in again to continue");
     }
 

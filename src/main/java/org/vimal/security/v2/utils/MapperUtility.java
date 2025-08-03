@@ -1,7 +1,9 @@
 package org.vimal.security.v2.utils;
 
+import org.vimal.security.v2.dtos.RoleSummaryDto;
 import org.vimal.security.v2.dtos.UserSummaryDto;
 import org.vimal.security.v2.dtos.UserSummaryToCompanyUsersDto;
+import org.vimal.security.v2.models.PermissionModel;
 import org.vimal.security.v2.models.RoleModel;
 import org.vimal.security.v2.models.UserModel;
 
@@ -46,5 +48,18 @@ public class MapperUtility {
         dto.setAccountEnabled(user.isAccountEnabled());
         dto.setFailedLoginAttempts(user.getFailedLoginAttempts());
         dto.setFailedMfaAttempts(user.getFailedMfaAttempts());
+    }
+
+    public static RoleSummaryDto toRoleSummaryDto(RoleModel role) {
+        var dto = new RoleSummaryDto();
+        dto.setRoleName(role.getRoleName());
+        dto.setDescription(role.getDescription());
+        dto.setCreatedBy(role.getCreatedBy());
+        dto.setUpdatedBy(role.getUpdatedBy());
+        dto.setPermissions(role.getPermissions().stream().map(PermissionModel::getPermissionName).collect(Collectors.toSet()));
+        dto.setCreatedAt(role.getCreatedAt());
+        dto.setUpdatedAt(role.getUpdatedAt());
+        dto.setSystemRole(role.isSystemRole());
+        return dto;
     }
 }

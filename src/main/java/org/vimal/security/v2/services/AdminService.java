@@ -693,6 +693,7 @@ public class AdminService {
                 var permissionsToAssign = dto.getPermissions().stream().map(resolvedPermissionsResult.getResolvedPermissionsMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
                 return toRoleModel(dto, permissionsToAssign, creator.getUserModel());
             }).collect(Collectors.toSet());
+            return ResponseEntity.ok(Map.of("message", "Roles created successfully", "created_roles", roleRepo.saveAll(newRoles).stream().map(MapperUtility::toRoleSummaryDto).toList()));
         }
         throw new ServiceUnavailableException("Creation of roles is currently disabled. Please try again later");
     }

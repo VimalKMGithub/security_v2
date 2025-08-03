@@ -376,7 +376,9 @@ public class AdminService {
                 mapOfErrors.put("users_not_found_with_emails", userReadsInputResult.getEmails());
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             foundByUsernames.addAll(foundByEmails);
-            return ResponseEntity.ok(Map.of("message", "Users read successfully", "users", foundByUsernames.stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
+            if (!foundByUsernames.isEmpty())
+                return ResponseEntity.ok(Map.of("message", "Users read successfully", "users", foundByUsernames.stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
+            return ResponseEntity.ok(Map.of("message", "No users to read"));
         }
         throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
     }

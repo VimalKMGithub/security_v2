@@ -344,7 +344,14 @@ public class UserService {
         if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))
             throw new BadRequestException("Invalid old password");
         selfChangePassword(user, dto.getPassword());
+        emailConfirmationOnSelfPasswordChange(user);
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
+    }
+
+    private void emailConfirmationOnSelfPasswordChange(UserModel user) {
+        if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_PASSWORD_CHANGE.name())) {
+            mailService.sendEmailAsync(user.getEmail(), "Password change confirmation", "", MailService.MailType.SELF_PASSWORD_CHANGE_CONFIRMATION);
+        }
     }
 
     public Map<String, String> changePasswordMethodSelection(String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -438,6 +445,7 @@ public class UserService {
                 }
                 user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
                 selfChangePassword(user, dto.getPassword());
+                emailConfirmationOnSelfPasswordChange(user);
                 return Map.of("message", "Password change successful");
             }
             throw new BadRequestException("Invalid OTP");
@@ -451,6 +459,7 @@ public class UserService {
         if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), dto.getOtpTotp()))
             throw new BadRequestException("Invalid TOTP");
         selfChangePassword(user, dto.getPassword());
+        emailConfirmationOnSelfPasswordChange(user);
         return Map.of("message", "Password change successful");
     }
 

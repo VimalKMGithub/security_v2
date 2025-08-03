@@ -582,13 +582,13 @@ public class AdminService {
                                                                                       UserDetailsImpl user,
                                                                                       String userHighestTopRole) {
         var resolvedRolesResult = resolveRoles(userUpdationResult.getRoles());
-        var userToUsernameMap = userRepo.findByUsernameIn(userUpdationResult.getOldUsernames()).stream().collect(Collectors.toMap(UserModel::getUsername, Function.identity()));
+        var usernameToUserMap = userRepo.findByUsernameIn(userUpdationResult.getOldUsernames()).stream().collect(Collectors.toMap(UserModel::getUsername, Function.identity()));
         var updatedUsers = new HashSet<UserModel>();
         var usersToWhichWeHaveToRevokeTokens = new HashSet<UserModel>();
         var notFoundUsers = new HashSet<String>();
         var rolesOfUsers = new HashSet<String>();
         dtos.forEach(dto -> {
-            var userToUpdate = userToUsernameMap.get(dto.getOldUsername());
+            var userToUpdate = usernameToUserMap.get(dto.getOldUsername());
             if (Objects.isNull(userToUpdate)) {
                 notFoundUsers.add(dto.getOldUsername());
                 return;

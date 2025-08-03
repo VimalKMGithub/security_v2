@@ -340,7 +340,7 @@ public class AdminService {
                     userRepo.deleteAll(deletionResult.getUsersToDelete());
                     return ResponseEntity.ok(Map.of("message", "Users deleted successfully"));
                 }
-                return ResponseEntity.badRequest().body(Map.of("message", "No users to delete"));
+                return ResponseEntity.ok(Map.of("message", "No users to delete"));
             }
             return ResponseEntity.badRequest().body(deletionResult.getMapOfErrors());
         }

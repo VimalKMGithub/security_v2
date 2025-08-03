@@ -324,7 +324,7 @@ public class AdminService {
     public ResponseEntity<Map<String, Object>> deleteUsersHard(Set<String> usernamesOrEmails) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = getUserHighestTopRole(user);
-        if (entryCheck(unleash.getVariant(FeatureFlags.ALLOW_HARD_DELETE_USERS.name()), userHighestTopRole)) {
+        if (unleash.isEnabled(FeatureFlags.ALLOW_HARD_DELETE_USERS.name()) || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
             checkUserCanHardDeleteUsers(userHighestTopRole);
             var deletionResult = deleteUsersResult(usernamesOrEmails, user, userHighestTopRole);
             if (deletionResult.getMapOfErrors().isEmpty()) {

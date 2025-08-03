@@ -14,6 +14,7 @@ import org.vimal.security.v2.enums.SystemRoles;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.exceptions.ServiceUnavailableException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
+import org.vimal.security.v2.models.PermissionModel;
 import org.vimal.security.v2.models.RoleModel;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.PermissionRepo;
@@ -681,7 +682,10 @@ public class AdminService {
             var alreadyExistingRoles = roleRepo.findAllById(roleCreationResult.getRoleNames()).stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
             if (!alreadyExistingRoles.isEmpty()) mapOfErrors.put("roles_already_exist", alreadyExistingRoles);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
-            var foundPermissions = permissionRepo.findAllById(roleCreationResult.getPermissions());
+            var resolvedPermissionsResult = resolvePermissions(roleCreationResult.getPermissions());
+            if (!resolvedPermissionsResult.getMissingPermissions().isEmpty())
+                mapOfErrors.put("missing_permissions", resolvedPermissionsResult.getMissingPermissions());
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
         }
         throw new ServiceUnavailableException("Creation of roles is currently disabled. Please try again later");
     }
@@ -736,5 +740,17 @@ public class AdminService {
         if (!roleCreationResult.getDuplicateRoleNamesInDtos().isEmpty())
             mapOfErrors.put("duplicate_role_names_in_request", roleCreationResult.getDuplicateRoleNamesInDtos());
         return mapOfErrors;
+    }
+
+    private ResolvedPermissionsResultDto resolvePermissions(Set<String> permissions) {
+        if (Objects.isNull(permissions) || permissions.isEmpty())
+            return new ResolvedPermissionsResultDto(new HashMap<>(), new HashSet<>());
+        var foundPermissions = permissionRepo.findAllById(permissions);
+        var resolvedPermissionsMap = new HashMap<String, PermissionModel>();
+        foundPermissions.forEach(permission -> {
+            permissions.remove(permission.getPermissionName());
+            resolvedPermissionsMap.put(permission.getPermissionName(), permission);
+        });
+        return new ResolvedPermissionsResultDto(resolvedPermissionsMap, permissions);
     }
 }

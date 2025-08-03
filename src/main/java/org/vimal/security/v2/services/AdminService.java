@@ -654,7 +654,7 @@ public class AdminService {
         if (!rolesOfUsers.isEmpty()) {
             var notAllowedToUpdateUsersWithTheseRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);
             if (!notAllowedToUpdateUsersWithTheseRoles.isEmpty())
-                mapOfErrors.put("not_allowed_to_users_with_these_roles", notAllowedToUpdateUsersWithTheseRoles);
+                mapOfErrors.put("not_allowed_to_update_users_with_these_roles", notAllowedToUpdateUsersWithTheseRoles);
         }
         return new UserUpdationWithNewDetailsResultDto(mapOfErrors, updatedUsers, usersToWhichWeHaveToRevokeTokens);
     }

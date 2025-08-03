@@ -686,6 +686,13 @@ public class AdminService {
             if (!resolvedPermissionsResult.getMissingPermissions().isEmpty())
                 mapOfErrors.put("missing_permissions", resolvedPermissionsResult.getMissingPermissions());
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            if (dtos.isEmpty()) return ResponseEntity.ok(Map.of("message", "No roles to create"));
+            var newRoles = dtos.stream().map(dto -> {
+                if (Objects.isNull(dto.getPermissions()) || dto.getPermissions().isEmpty())
+                    return toRoleModel(dto, new HashSet<>(), creator.getUserModel());
+                var permissionsToAssign = dto.getPermissions().stream().map(resolvedPermissionsResult.getResolvedPermissionsMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
+                return toRoleModel(dto, permissionsToAssign, creator.getUserModel());
+            }).collect(Collectors.toSet());
         }
         throw new ServiceUnavailableException("Creation of roles is currently disabled. Please try again later");
     }
@@ -752,5 +759,17 @@ public class AdminService {
             resolvedPermissionsMap.put(permission.getPermissionName(), permission);
         });
         return new ResolvedPermissionsResultDto(resolvedPermissionsMap, permissions);
+    }
+
+    private RoleModel toRoleModel(RoleCreationUpdationDto dto,
+                                  Set<PermissionModel> permissions,
+                                  UserModel creator) {
+        return RoleModel.builder()
+                .roleName(dto.getRoleName())
+                .description(dto.getDescription())
+                .permissions(permissions)
+                .createdBy(creator.getUsername())
+                .updatedBy(creator.getUsername())
+                .build();
     }
 }

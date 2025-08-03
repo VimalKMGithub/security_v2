@@ -195,8 +195,10 @@ public class UserModel {
     public void recordLockedStatus(boolean locked) {
         this.accountLocked = locked;
         this.lastLockedAt = locked ? Instant.now() : null;
-        this.failedLoginAttempts = 0;
-        this.failedMfaAttempts = 0;
+        if (!locked) {
+            this.failedLoginAttempts = 0;
+            this.failedMfaAttempts = 0;
+        }
     }
 
     private static final int MAX_FAILED_ATTEMPTS = 5;

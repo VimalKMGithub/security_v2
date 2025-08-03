@@ -652,9 +652,9 @@ public class AdminService {
         var mapOfErrors = new HashMap<String, Object>();
         if (!notFoundUsers.isEmpty()) mapOfErrors.put("users_not_found", notFoundUsers);
         if (!rolesOfUsers.isEmpty()) {
-            var notAllowedToAssignRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);
-            if (!notAllowedToAssignRoles.isEmpty())
-                mapOfErrors.put("not_allowed_to_assign_roles", notAllowedToAssignRoles);
+            var notAllowedToUpdateUsersWithTheseRoles = validateRolesRestriction(rolesOfUsers, userHighestTopRole);
+            if (!notAllowedToUpdateUsersWithTheseRoles.isEmpty())
+                mapOfErrors.put("not_allowed_to_users_with_these_roles", notAllowedToUpdateUsersWithTheseRoles);
         }
         return new UserUpdationWithNewDetailsResultDto(mapOfErrors, updatedUsers, usersToWhichWeHaveToRevokeTokens);
     }

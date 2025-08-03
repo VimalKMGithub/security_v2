@@ -15,7 +15,9 @@ public class MailService {
         ACCOUNT_DELETION_CONFIRMATION,
         PASSWORD_RESET_CONFIRMATION,
         SELF_PASSWORD_CHANGE_CONFIRMATION,
-        SELF_EMAIL_CHANGE_CONFIRMATION
+        SELF_EMAIL_CHANGE_CONFIRMATION,
+        SELF_UPDATE_DETAILS_CONFIRMATION,
+        SELF_MFA_ENABLE_DISABLE_CONFIRMATION
     }
 
     private static final String OTP_TEMPLATE = """
@@ -42,6 +44,14 @@ public class MailService {
             Your email has been changed successfully.
             If this was not done by you, please contact support immediately.
             """;
+    private static final String SELF_UPDATE_DETAILS_CONFIRMATION_TEMPLATE = """
+            Your details have been updated successfully.
+            If this was not done by you, please contact support immediately.
+            """;
+    private static final String SELF_MFA_ENABLE_DISABLE_CONFIRMATION_TEMPLATE = """
+            %s.
+            If this was not done by you, please contact support immediately.
+            """;
 
     private void sendEmail(String to,
                            String subject,
@@ -60,6 +70,9 @@ public class MailService {
             case PASSWORD_RESET_CONFIRMATION -> PASSWORD_RESET_CONFIRMATION_TEMPLATE;
             case SELF_PASSWORD_CHANGE_CONFIRMATION -> SELF_PASSWORD_CHANGE_CONFIRMATION_TEMPLATE;
             case SELF_EMAIL_CHANGE_CONFIRMATION -> SELF_EMAIL_CHANGE_CONFIRMATION_TEMPLATE;
+            case SELF_UPDATE_DETAILS_CONFIRMATION -> SELF_UPDATE_DETAILS_CONFIRMATION_TEMPLATE;
+            case SELF_MFA_ENABLE_DISABLE_CONFIRMATION ->
+                    String.format(SELF_MFA_ENABLE_DISABLE_CONFIRMATION_TEMPLATE, value);
         };
         sendEmail(to, subject, text);
     }

@@ -711,6 +711,8 @@ public class UserService {
             return ResponseEntity.badRequest().body(Map.of("invalid_inputs", userModificationResult.getInvalidInputs()));
         if (userModificationResult.isModified()) {
             user.setUpdatedBy("SELF");
+            if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_UPDATE_DETAILS.name()))
+                mailService.sendEmailAsync(user.getEmail(), "Details updated confirmation", "", MailService.MailType.SELF_UPDATE_DETAILS_CONFIRMATION);
             if (userModificationResult.isShouldRemoveTokens()) {
                 jwtUtility.revokeTokens(user);
                 return ResponseEntity.ok(Map.of("message", "User details updated successfully. Please login again to continue", "user", MapperUtility.toUserSummaryDto(userRepo.save(user))));

@@ -212,7 +212,11 @@ public class JWTUtility {
     }
 
     private String getEncryptedJWTIdKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        return jwtStaticConverter.encrypt(JWT_ID_PREFIX + user.getId());
+        return getEncryptedJWTIdKey(user.getId());
+    }
+
+    private String getEncryptedJWTIdKey(UUID userId) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        return jwtStaticConverter.encrypt(JWT_ID_PREFIX + userId);
     }
 
     public void revokeAccessToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -231,14 +235,14 @@ public class JWTUtility {
 //        else redisService.delete(encryptedRefreshTokenKey);
 //    }
 
-    public void revokeTokens(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        var encryptedJWTIdKey = getEncryptedJWTIdKey(user);
-        var encryptedRefreshTokenKey = getEncryptedRefreshTokenKey(user);
-        var encryptedRefreshToken = redisService.get(encryptedRefreshTokenKey);
-        if (encryptedRefreshToken != null)
-            redisService.deleteAll(Set.of(encryptedJWTIdKey, encryptedRefreshTokenKey, getEncryptedRefreshTokenMappingKey((String) encryptedRefreshToken)));
-        else redisService.deleteAll(Set.of(encryptedJWTIdKey, encryptedRefreshTokenKey));
-    }
+//    public void revokeTokens(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+//        var encryptedJWTIdKey = getEncryptedJWTIdKey(user);
+//        var encryptedRefreshTokenKey = getEncryptedRefreshTokenKey(user);
+//        var encryptedRefreshToken = redisService.get(encryptedRefreshTokenKey);
+//        if (encryptedRefreshToken != null)
+//            redisService.deleteAll(Set.of(encryptedJWTIdKey, encryptedRefreshTokenKey, getEncryptedRefreshTokenMappingKey((String) encryptedRefreshToken)));
+//        else redisService.deleteAll(Set.of(encryptedJWTIdKey, encryptedRefreshTokenKey));
+//    }
 
     public void revokeTokens(Set<UserModel> users) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedKeys = new HashSet<>();

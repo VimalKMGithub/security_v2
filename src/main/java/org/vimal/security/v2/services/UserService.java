@@ -549,7 +549,7 @@ public class UserService {
             var oldEmail = user.getEmail();
             user.setEmail(newEmail);
             user.setRealEmail(sanitizedEmail);
-            jwtUtility.revokeTokens(user);
+            jwtUtility.revokeTokens(Set.of(user));
             try {
                 redisService.deleteAll(Set.of(encryptedEmailChangeOTPKey, encryptedEmailChangeForOldEmailOTPKey, encryptedEmailKey));
             } catch (Exception ignored) {
@@ -585,7 +585,7 @@ public class UserService {
     }
 
     private void selfDeleteAccount(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        jwtUtility.revokeTokens(user);
+        jwtUtility.revokeTokens(Set.of(user));
         user.recordAccountDeletion(true, "SELF");
         userRepo.save(user);
         if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_ACCOUNT_DELETION.name()))
@@ -714,7 +714,7 @@ public class UserService {
             if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_UPDATE_DETAILS.name()))
                 mailService.sendEmailAsync(user.getEmail(), "Details updated confirmation", "", MailService.MailType.SELF_UPDATE_DETAILS_CONFIRMATION);
             if (userModificationResult.isShouldRemoveTokens()) {
-                jwtUtility.revokeTokens(user);
+                jwtUtility.revokeTokens(Set.of(user));
                 return ResponseEntity.ok(Map.of("message", "User details updated successfully. Please login again to continue", "user", MapperUtility.toUserSummaryDto(userRepo.save(user))));
             }
             return ResponseEntity.ok(Map.of("message", "User details updated successfully", "user", MapperUtility.toUserSummaryDto(userRepo.save(user))));

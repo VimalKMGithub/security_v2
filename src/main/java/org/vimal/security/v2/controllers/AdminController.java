@@ -73,7 +73,7 @@ public class AdminController {
         return adminService.deleteRolesForce(roleNames);
     }
 
-    @GetMapping
+    @GetMapping("/get/roles")
     @PreAuthorize("@PreAuth.canReadRoles()")
     public ResponseEntity<Map<String, Object>> getRoles(@RequestBody Set<String> roleNames) {
         return adminService.getRoles(roleNames);

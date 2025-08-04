@@ -677,7 +677,7 @@ public class AdminService {
             checkUserCanCreateRoles(creatorHighestTopRole);
             validateDtosSizeForRolesCreation(variant, dtos);
             var roleCreationResult = validateInputsForRoleCreation(dtos);
-            var mapOfErrors = errorsStuffingIfAnyInRoleCreation(roleCreationResult);
+            var mapOfErrors = errorsStuffingIfAnyInRoleCreationUpdation(roleCreationResult);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             var alreadyExistingRoles = roleRepo.findAllById(roleCreationResult.getRoleNames()).stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
             if (!alreadyExistingRoles.isEmpty()) mapOfErrors.put("roles_already_exist", alreadyExistingRoles);
@@ -741,7 +741,7 @@ public class AdminService {
         return new RoleCreationUpdationResultDto(invalidInputs, roleNames, duplicateRoleNamesInDtos, permissions);
     }
 
-    private Map<String, Object> errorsStuffingIfAnyInRoleCreation(RoleCreationUpdationResultDto roleCreationResult) {
+    private Map<String, Object> errorsStuffingIfAnyInRoleCreationUpdation(RoleCreationUpdationResultDto roleCreationResult) {
         var mapOfErrors = new HashMap<String, Object>();
         if (!roleCreationResult.getInvalidInputs().isEmpty())
             mapOfErrors.put("invalid_inputs", roleCreationResult.getInvalidInputs());
@@ -920,7 +920,7 @@ public class AdminService {
             checkUserCanUpdateRoles(userHighestTopRole);
             validateDtosSizeForRolesToUpdate(variant, dtos);
             var roleUpdationResult = validateInputsForRoleUpdation(dtos);
-            var mapOfErrors = errorsStuffingIfAnyInRoleUpdation(roleUpdationResult);
+            var mapOfErrors = errorsStuffingIfAnyInRoleCreationUpdation(roleUpdationResult);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             var alreadyExistingRoles = roleRepo.findAllById(roleUpdationResult.getRoleNames()).stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
             if (!alreadyExistingRoles.isEmpty()) mapOfErrors.put("roles_already_exist", alreadyExistingRoles);
@@ -956,5 +956,31 @@ public class AdminService {
                 throw new BadRequestException("Cannot update more than " + maxRolesToUpdateAtATime + " roles at a time");
         } else if (dtos.size() > DEFAULT_MAX_ROLES_TO_UPDATE_AT_A_TIME)
             throw new BadRequestException("Cannot update more than " + DEFAULT_MAX_ROLES_TO_UPDATE_AT_A_TIME + " roles at a time");
+    }
+
+    private RoleCreationUpdationResultDto validateInputsForRoleUpdation(Set<RoleCreationUpdationDto> dtos) {
+        var invalidInputs = new HashSet<String>();
+        var roleNames = new HashSet<String>();
+        var duplicateRoleNamesInDtos = new HashSet<String>();
+        var permissions = new HashSet<String>();
+        dtos.remove(null);
+        dtos.forEach(dto -> {
+            try {
+                ValidationUtility.validateRoleAndPermissionName(dto.getRoleName());
+                if (!roleNames.add(dto.getRoleName())) duplicateRoleNamesInDtos.add(dto.getRoleName());
+            } catch (BadRequestException ex) {
+                invalidInputs.add(ex.getMessage());
+            }
+            try {
+                ValidationUtility.validateDescription(dto.getDescription());
+            } catch (BadRequestException ex) {
+                invalidInputs.add(ex.getMessage());
+            }
+            if (dto.getPermissions() != null && !dto.getPermissions().isEmpty()) {
+                dto.setPermissions(dto.getPermissions().stream().filter(p -> p != null && !p.isBlank()).collect(Collectors.toSet()));
+                if (!dto.getPermissions().isEmpty()) permissions.addAll(dto.getPermissions());
+            }
+        });
+        return new RoleCreationUpdationResultDto(invalidInputs, roleNames, duplicateRoleNamesInDtos, permissions);
     }
 }

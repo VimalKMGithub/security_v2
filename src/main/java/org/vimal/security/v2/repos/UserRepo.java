@@ -2,7 +2,6 @@ package org.vimal.security.v2.repos;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import org.vimal.security.v2.models.RoleModel;
 import org.vimal.security.v2.models.UserModel;
 
 import java.util.Optional;
@@ -24,10 +23,4 @@ public interface UserRepo extends JpaRepository<UserModel, UUID> {
     Set<UserModel> findByUsernameIn(Set<String> usernames);
 
     Set<UserModel> findByEmailIn(Set<String> emails);
-
-    long countByRoles_RoleName(String roleName);
-
-    Set<UserModel> findByRoles(RoleModel role);
-
-    Set<UserModel> findByRolesIn(Set<RoleModel> roles);
 }

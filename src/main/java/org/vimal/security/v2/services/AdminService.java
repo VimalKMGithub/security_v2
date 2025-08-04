@@ -857,8 +857,14 @@ public class AdminService {
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             if (!deleterRolesResult.getNotFoundRoles().isEmpty())
                 mapOfErrors.put("roles_not_found", deleterRolesResult.getNotFoundRoles());
-            if (deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles() > 0)
+            if (deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles() > 0) {
                 roleRepo.deleteUserRolesByRoleNames(deleterRolesResult.getFoundRolesNames());
+                jwtUtility.revokeTokensByUsersIds(deleterRolesResult.getUserIdsThatHaveSomeOfTheseRoles());
+            }
+            if (deleterRolesResult.getRoles().isEmpty())
+                return ResponseEntity.ok(Map.of("message", "No roles to delete"));
+            roleRepo.deleteAll(deleterRolesResult.getRoles());
+            return ResponseEntity.ok(Map.of("message", "Roles deleted successfully"));
         }
         throw new ServiceUnavailableException("Force deletion of roles is currently disabled. Please try again later");
     }

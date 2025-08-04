@@ -1034,4 +1034,54 @@ public class AdminService {
         if (!systemRolesNames.isEmpty()) mapOfErrors.put("system_roles_cannot_be_updated", systemRolesNames);
         return new RoleUpdationWithNewDetailsResultDto(mapOfErrors, updatedRoles, rolesToWhichWeHaveToRevokeTokensOfUsersHavingTheseRoles);
     }
+
+    public ResponseEntity<Map<String, Object>> getPermissions(Set<String> permissionNames) {
+        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+        var userHighestTopRole = getUserHighestTopRole(user);
+        var variant = unleash.getVariant(FeatureFlags.ALLOW_READ_PERMISSIONS.name());
+        if (entryCheck(variant, userHighestTopRole)) {
+            checkUserCanReadPermissions(userHighestTopRole);
+            validateInputsSizeForPermissionsToRead(variant, permissionNames);
+            var invalidInputs = getInvalidInputsInPermissionRead(permissionNames);
+            if (!invalidInputs.isEmpty())
+                return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+            var permissions = permissionRepo.findAllById(permissionNames);
+            var foundPermissionNames = permissions.stream().map(PermissionModel::getPermissionName).collect(Collectors.toSet());
+            permissionNames.removeAll(foundPermissionNames);
+            if (!permissionNames.isEmpty())
+                return ResponseEntity.badRequest().body(Map.of("not_found_permissions", permissionNames));
+            if (permissions.isEmpty()) return ResponseEntity.ok(Map.of("message", "No permissions to read"));
+            return ResponseEntity.ok(Map.of("permissions", permissions));
+        }
+        throw new ServiceUnavailableException("Reading permissions is currently disabled. Please try again later");
+    }
+
+    private void checkUserCanReadPermissions(String userHighestTopRole) {
+        if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_READ_PERMISSIONS_BY_USERS_HAVE_PERMISSION_TO_READ_PERMISSIONS.name()))
+            throw new ServiceUnavailableException("Reading permissions is currently disabled. Please try again later");
+    }
+
+    private void validateInputsSizeForPermissionsToRead(Variant variant,
+                                                        Set<String> permissionNames) {
+        if (permissionNames.isEmpty()) throw new BadRequestException("No permissions to read");
+        if (variant.isEnabled() && variant.getPayload().isPresent()) {
+            var maxPermissionsToReadAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+            if (maxPermissionsToReadAtATime < 1)
+                maxPermissionsToReadAtATime = DEFAULT_MAX_PERMISSIONS_TO_READ_AT_A_TIME;
+            if (permissionNames.size() > maxPermissionsToReadAtATime)
+                throw new BadRequestException("Cannot read more than " + maxPermissionsToReadAtATime + " permissions at a time");
+        } else if (permissionNames.size() > DEFAULT_MAX_PERMISSIONS_TO_READ_AT_A_TIME)
+            throw new BadRequestException("Cannot read more than " + DEFAULT_MAX_PERMISSIONS_TO_READ_AT_A_TIME + " permissions at a time");
+    }
+
+    private Set<String> getInvalidInputsInPermissionRead(Set<String> permissionNames) {
+        var invalidInputs = new HashSet<String>();
+        permissionNames.remove(null);
+        permissionNames.forEach(permissionName -> {
+            if (!ValidationUtility.ROLE_AND_PERMISSION_NAME_PATTERN.matcher(permissionName).matches()) {
+                invalidInputs.add(permissionName);
+            }
+        });
+        return invalidInputs;
+    }
 }

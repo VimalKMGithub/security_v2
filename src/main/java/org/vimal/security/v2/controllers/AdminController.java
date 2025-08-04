@@ -84,4 +84,10 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> updateRoles(@RequestBody Set<RoleCreationUpdationDto> dtos) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return adminService.updateRoles(dtos);
     }
+
+    @GetMapping("/get/permissions")
+    @PreAuthorize("@PreAuth.canReadPermissions()")
+    public ResponseEntity<Map<String, Object>> getPermissions(@RequestBody Set<String> permissionNames) {
+        return adminService.getPermissions(permissionNames);
+    }
 }

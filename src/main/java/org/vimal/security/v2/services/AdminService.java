@@ -898,7 +898,7 @@ public class AdminService {
             var foundRoleNames = roles.stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
             roleNames.removeAll(foundRoleNames);
             if (!roleNames.isEmpty()) return ResponseEntity.badRequest().body(Map.of("not_found_roles", roleNames));
-            if (roles.isEmpty()) return ResponseEntity.ok(Map.of("message", "No roles found"));
+            if (roles.isEmpty()) return ResponseEntity.ok(Map.of("message", "No roles to read"));
             return ResponseEntity.ok(Map.of("roles", roles.stream().map(MapperUtility::toRoleSummaryDto).toList()));
         }
         throw new ServiceUnavailableException("Reading roles is currently disabled. Please try again later");

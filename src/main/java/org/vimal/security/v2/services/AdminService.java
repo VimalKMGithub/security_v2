@@ -799,7 +799,8 @@ public class AdminService {
             checkUserCanDeleteRoles(userHighestTopRole);
             validateInputsSizeForRolesToDelete(variant, roleNames);
             var invalidInputs = getInvalidInputsInRoleDeletionRead(roleNames);
-            if (!invalidInputs.isEmpty()) return new RoleDeletionReadResultDto(invalidInputs, null, null, 0, null);
+            if (!invalidInputs.isEmpty())
+                return new RoleDeletionReadResultDto(invalidInputs, null, null, null, 0, null);
             return getRoleDeletionReadResult(roleNames);
         }
         throw new ServiceUnavailableException("Deletion of roles is currently disabled. Please try again later");
@@ -841,15 +842,23 @@ public class AdminService {
         Set<UUID> userIdsThatHaveSomeOfTheseRoles = null;
         if (usersCountThatHaveSomeOfTheseRoles > 0)
             userIdsThatHaveSomeOfTheseRoles = roleRepo.findUserIdsByRoleNames(foundRoleNames);
-        return new RoleDeletionReadResultDto(null, roles, roleNames, usersCountThatHaveSomeOfTheseRoles, userIdsThatHaveSomeOfTheseRoles);
+        return new RoleDeletionReadResultDto(null, roles, roleNames, foundRoleNames, usersCountThatHaveSomeOfTheseRoles, userIdsThatHaveSomeOfTheseRoles);
     }
 
-    public ResponseEntity<Map<String, Object>> deleteRolesForce(Set<String> roleNames) {
+    public ResponseEntity<Map<String, Object>> deleteRolesForce(Set<String> roleNames) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = UserUtility.getCurrentAuthenticatedUserDetails();
         var userHighestTopRole = getUserHighestTopRole(user);
         if (unleash.isEnabled(FeatureFlags.ALLOW_FORCE_DELETE_ROLES.name()) || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
             checkUserCanForceDeleteRoles(userHighestTopRole);
-            var roleDeletionResult = deleteRolesResult(roleNames, userHighestTopRole);
+            var deleterRolesResult = deleteRolesResult(roleNames, userHighestTopRole);
+            var mapOfErrors = new HashMap<String, Object>();
+            if (!deleterRolesResult.getInvalidInputs().isEmpty())
+                mapOfErrors.put("invalid_inputs", deleterRolesResult.getInvalidInputs());
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            if (!deleterRolesResult.getNotFoundRoles().isEmpty())
+                mapOfErrors.put("roles_not_found", deleterRolesResult.getNotFoundRoles());
+            if (deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles() > 0)
+                roleRepo.deleteUserRolesByRoleNames(deleterRolesResult.getFoundRolesNames());
         }
         throw new ServiceUnavailableException("Force deletion of roles is currently disabled. Please try again later");
     }

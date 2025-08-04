@@ -18,6 +18,7 @@ public class RoleDeletionReadResultDto {
     private Set<String> invalidInputs;
     private Collection<RoleModel> roles;
     private Set<String> notFoundRoles;
+    private Set<String> foundRolesNames;
     private long usersCountThatHaveSomeOfTheseRoles;
     private Set<UUID> userIdsThatHaveSomeOfTheseRoles;
 }

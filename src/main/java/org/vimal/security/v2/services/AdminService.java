@@ -786,6 +786,8 @@ public class AdminService {
             mapOfErrors.put("roles_not_found", deleterRolesResult.getNotFoundRoles());
         if (deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles() > 0)
             mapOfErrors.put("some_users_has_some_of_these_roles_so_cannot_delete", deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles() + " user(s) have some of these roles");
+        if (!deleterRolesResult.getSystemRolesNames().isEmpty())
+            mapOfErrors.put("system_roles_cannot_be_deleted", deleterRolesResult.getSystemRolesNames());
         if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
         if (deleterRolesResult.getRoles().isEmpty()) return ResponseEntity.ok(Map.of("message", "No roles to delete"));
         roleRepo.deleteAll(deleterRolesResult.getRoles());
@@ -800,7 +802,7 @@ public class AdminService {
             validateInputsSizeForRolesToDelete(variant, roleNames);
             var invalidInputs = getInvalidInputsInRoleDeletionRead(roleNames);
             if (!invalidInputs.isEmpty())
-                return new RoleDeletionReadResultDto(invalidInputs, null, null, null, 0, null);
+                return new RoleDeletionReadResultDto(invalidInputs, null, null, null, null, 0, null);
             return getRoleDeletionReadResult(roleNames);
         }
         throw new ServiceUnavailableException("Deletion of roles is currently disabled. Please try again later");
@@ -836,13 +838,18 @@ public class AdminService {
 
     private RoleDeletionReadResultDto getRoleDeletionReadResult(Set<String> roleNames) {
         var roles = roleRepo.findAllById(roleNames);
-        var foundRoleNames = roles.stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
-        roleNames.removeAll(foundRoleNames);
+        var foundRoleNames = new HashSet<String>();
+        var systemRolesNames = new HashSet<String>();
+        roles.forEach(role -> {
+            roleNames.remove(role.getRoleName());
+            foundRoleNames.add(role.getRoleName());
+            if (role.isSystemRole()) systemRolesNames.add(role.getRoleName());
+        });
         var usersCountThatHaveSomeOfTheseRoles = roleRepo.countUsersByRoleNames(foundRoleNames);
         Set<UUID> userIdsThatHaveSomeOfTheseRoles = null;
         if (usersCountThatHaveSomeOfTheseRoles > 0)
             userIdsThatHaveSomeOfTheseRoles = roleRepo.findUserIdsByRoleNames(foundRoleNames);
-        return new RoleDeletionReadResultDto(null, roles, roleNames, foundRoleNames, usersCountThatHaveSomeOfTheseRoles, userIdsThatHaveSomeOfTheseRoles);
+        return new RoleDeletionReadResultDto(null, roles, roleNames, foundRoleNames, systemRolesNames, usersCountThatHaveSomeOfTheseRoles, userIdsThatHaveSomeOfTheseRoles);
     }
 
     public ResponseEntity<Map<String, Object>> deleteRolesForce(Set<String> roleNames) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -857,6 +864,8 @@ public class AdminService {
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             if (!deleterRolesResult.getNotFoundRoles().isEmpty())
                 mapOfErrors.put("roles_not_found", deleterRolesResult.getNotFoundRoles());
+            if (!deleterRolesResult.getSystemRolesNames().isEmpty())
+                mapOfErrors.put("system_roles_cannot_be_force_deleted", deleterRolesResult.getSystemRolesNames());
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             if (deleterRolesResult.getRoles().isEmpty())
                 return ResponseEntity.ok(Map.of("message", "No roles to delete"));

@@ -63,7 +63,7 @@ public class AdminController {
 
     @DeleteMapping("/delete/roles")
     @PreAuthorize("@PreAuth.canDeleteRoles()")
-    public ResponseEntity<Map<String, Object>> deleteRoles(@RequestBody Set<String> roleNames) {
+    public ResponseEntity<Map<String, Object>> deleteRoles(@RequestBody Set<String> roleNames) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return adminService.deleteRoles(roleNames);
     }
 }

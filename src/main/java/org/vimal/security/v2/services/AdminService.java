@@ -774,16 +774,13 @@ public class AdminService {
                 .build();
     }
 
-    public ResponseEntity<Map<String, Object>> deleteRoles(Set<String> roleNames) {
+    public ResponseEntity<Map<String, Object>> deleteRoles(Set<String> roleNames) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var deleter = UserUtility.getCurrentAuthenticatedUserDetails();
         var deleterHighestTopRole = getUserHighestTopRole(deleter);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_ROLES.name());
         if (entryCheck(variant, deleterHighestTopRole)) {
             checkUserCanDeleteRoles(deleterHighestTopRole);
             validateInputsSizeForRolesToDelete(variant, roleNames);
-            var roleDeletionInputResult = validateInputsRoleDeletionRead(roleNames);
-            var mapOfErrors = errorsStuffingIfAnyInRoleDeletion(roleDeletionInputResult);
-            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
         }
         throw new ServiceUnavailableException("Deletion of roles is currently disabled. Please try again later");
     }
@@ -803,23 +800,5 @@ public class AdminService {
                 throw new BadRequestException("Cannot delete more than " + maxRolesToDeleteAtATime + " roles at a time");
         } else if (roleNames.size() > DEFAULT_MAX_ROLES_TO_DELETE_AT_A_TIME)
             throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_ROLES_TO_DELETE_AT_A_TIME + " roles at a time");
-    }
-
-    private RoleDeletionReadInputResultDto validateInputsRoleDeletionRead(Set<String> roleNames) {
-        var invalidInputs = new HashSet<String>();
-        var roles = new HashSet<String>();
-        roleNames.remove(null);
-        roleNames.forEach(roleName -> {
-            if (ValidationUtility.ROLE_AND_PERMISSION_NAME_PATTERN.matcher(roleName).matches()) roles.add(roleName);
-            else invalidInputs.add(roleName);
-        });
-        return new RoleDeletionReadInputResultDto(invalidInputs, roles);
-    }
-
-    private Map<String, Object> errorsStuffingIfAnyInRoleDeletion(RoleDeletionReadInputResultDto roleDeletionInputResult) {
-        var mapOfErrors = new HashMap<String, Object>();
-        if (!roleDeletionInputResult.getInvalidInputs().isEmpty())
-            mapOfErrors.put("invalid_inputs", roleDeletionInputResult.getInvalidInputs());
-        return mapOfErrors;
     }
 }

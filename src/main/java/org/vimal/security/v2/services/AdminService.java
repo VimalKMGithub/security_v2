@@ -911,4 +911,50 @@ public class AdminService {
         } else if (roleNames.size() > DEFAULT_MAX_ROLES_TO_READ_AT_A_TIME)
             throw new BadRequestException("Cannot read more than " + DEFAULT_MAX_ROLES_TO_READ_AT_A_TIME + " roles at a time");
     }
+
+    public ResponseEntity<Map<String, Object>> updateRoles(Set<RoleCreationUpdationDto> dtos) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+        var userHighestTopRole = getUserHighestTopRole(user);
+        var variant = unleash.getVariant(FeatureFlags.ALLOW_UPDATE_ROLES.name());
+        if (entryCheck(variant, userHighestTopRole)) {
+            checkUserCanUpdateRoles(userHighestTopRole);
+            validateDtosSizeForRolesToUpdate(variant, dtos);
+            var roleUpdationResult = validateInputsForRoleUpdation(dtos);
+            var mapOfErrors = errorsStuffingIfAnyInRoleUpdation(roleUpdationResult);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            var alreadyExistingRoles = roleRepo.findAllById(roleUpdationResult.getRoleNames()).stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
+            if (!alreadyExistingRoles.isEmpty()) mapOfErrors.put("roles_already_exist", alreadyExistingRoles);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            var resolvedPermissionsResult = resolvePermissions(roleUpdationResult.getPermissions());
+            if (!resolvedPermissionsResult.getMissingPermissions().isEmpty())
+                mapOfErrors.put("missing_permissions", resolvedPermissionsResult.getMissingPermissions());
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            if (dtos.isEmpty()) return ResponseEntity.ok(Map.of("message", "No roles to update"));
+            var updatedRoles = dtos.stream().map(dto -> {
+                if (Objects.isNull(dto.getPermissions()) || dto.getPermissions().isEmpty())
+                    return toRoleModel(dto, new HashSet<>(), user.getUserModel());
+                var permissionsToAssign = dto.getPermissions().stream().map(resolvedPermissionsResult.getResolvedPermissionsMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
+                return toRoleModel(dto, permissionsToAssign, user.getUserModel());
+            }).collect(Collectors.toSet());
+            return ResponseEntity.ok(Map.of("updated_roles", roleRepo.saveAll(updatedRoles).stream().map(MapperUtility::toRoleSummaryDto).toList()));
+        }
+        throw new ServiceUnavailableException("Updating roles is currently disabled. Please try again later");
+    }
+
+    private void checkUserCanUpdateRoles(String userHighestTopRole) {
+        if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_UPDATE_ROLES_BY_USERS_HAVE_PERMISSION_TO_UPDATE_ROLES.name()))
+            throw new ServiceUnavailableException("Updating roles is currently disabled. Please try again later");
+    }
+
+    private void validateDtosSizeForRolesToUpdate(Variant variant,
+                                                  Set<RoleCreationUpdationDto> dtos) {
+        if (dtos.isEmpty()) throw new BadRequestException("No roles to update");
+        if (variant.isEnabled() && variant.getPayload().isPresent()) {
+            var maxRolesToUpdateAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+            if (maxRolesToUpdateAtATime < 1) maxRolesToUpdateAtATime = DEFAULT_MAX_ROLES_TO_UPDATE_AT_A_TIME;
+            if (dtos.size() > maxRolesToUpdateAtATime)
+                throw new BadRequestException("Cannot update more than " + maxRolesToUpdateAtATime + " roles at a time");
+        } else if (dtos.size() > DEFAULT_MAX_ROLES_TO_UPDATE_AT_A_TIME)
+            throw new BadRequestException("Cannot update more than " + DEFAULT_MAX_ROLES_TO_UPDATE_AT_A_TIME + " roles at a time");
+    }
 }

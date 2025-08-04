@@ -785,7 +785,7 @@ public class AdminService {
         if (!deleterRolesResult.getNotFoundRoles().isEmpty())
             mapOfErrors.put("roles_not_found", deleterRolesResult.getNotFoundRoles());
         if (deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles() > 0)
-            mapOfErrors.put("users_count_that_have_some_of_these_roles", deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles());
+            mapOfErrors.put("some_users_has_some_of_these_roles_so_cannot_delete", deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles() + " user(s) have some of these roles");
         if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
         if (deleterRolesResult.getRoles().isEmpty()) return ResponseEntity.ok(Map.of("message", "No roles to delete"));
         roleRepo.deleteAll(deleterRolesResult.getRoles());

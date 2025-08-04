@@ -773,4 +773,53 @@ public class AdminService {
                 .updatedBy(creator.getUsername())
                 .build();
     }
+
+    public ResponseEntity<Map<String, Object>> deleteRoles(Set<String> roleNames) {
+        var deleter = UserUtility.getCurrentAuthenticatedUserDetails();
+        var deleterHighestTopRole = getUserHighestTopRole(deleter);
+        var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_ROLES.name());
+        if (entryCheck(variant, deleterHighestTopRole)) {
+            checkUserCanDeleteRoles(deleterHighestTopRole);
+            validateInputsSizeForRolesToDelete(variant, roleNames);
+            var roleDeletionInputResult = validateInputsRoleDeletionRead(roleNames);
+            var mapOfErrors = errorsStuffingIfAnyInRoleDeletion(roleDeletionInputResult);
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+        }
+        throw new ServiceUnavailableException("Deletion of roles is currently disabled. Please try again later");
+    }
+
+    private void checkUserCanDeleteRoles(String userHighestTopRole) {
+        if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_DELETE_ROLES_BY_USERS_HAVE_PERMISSION_TO_DELETE_ROLES.name()))
+            throw new ServiceUnavailableException("Deletion of roles is currently disabled. Please try again later");
+    }
+
+    private void validateInputsSizeForRolesToDelete(Variant variant,
+                                                    Set<String> roleNames) {
+        if (roleNames.isEmpty()) throw new BadRequestException("No roles to delete");
+        if (variant.isEnabled() && variant.getPayload().isPresent()) {
+            var maxRolesToDeleteAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+            if (maxRolesToDeleteAtATime < 1) maxRolesToDeleteAtATime = DEFAULT_MAX_ROLES_TO_DELETE_AT_A_TIME;
+            if (roleNames.size() > maxRolesToDeleteAtATime)
+                throw new BadRequestException("Cannot delete more than " + maxRolesToDeleteAtATime + " roles at a time");
+        } else if (roleNames.size() > DEFAULT_MAX_ROLES_TO_DELETE_AT_A_TIME)
+            throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_ROLES_TO_DELETE_AT_A_TIME + " roles at a time");
+    }
+
+    private RoleDeletionReadInputResultDto validateInputsRoleDeletionRead(Set<String> roleNames) {
+        var invalidInputs = new HashSet<String>();
+        var roles = new HashSet<String>();
+        roleNames.remove(null);
+        roleNames.forEach(roleName -> {
+            if (ValidationUtility.ROLE_AND_PERMISSION_NAME_PATTERN.matcher(roleName).matches()) roles.add(roleName);
+            else invalidInputs.add(roleName);
+        });
+        return new RoleDeletionReadInputResultDto(invalidInputs, roles);
+    }
+
+    private Map<String, Object> errorsStuffingIfAnyInRoleDeletion(RoleDeletionReadInputResultDto roleDeletionInputResult) {
+        var mapOfErrors = new HashMap<String, Object>();
+        if (!roleDeletionInputResult.getInvalidInputs().isEmpty())
+            mapOfErrors.put("invalid_inputs", roleDeletionInputResult.getInvalidInputs());
+        return mapOfErrors;
+    }
 }

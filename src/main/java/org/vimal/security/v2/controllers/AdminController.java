@@ -60,4 +60,10 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> createRoles(@RequestBody Set<RoleCreationUpdationDto> dtos) {
         return adminService.createRoles(dtos);
     }
+
+    @DeleteMapping("/delete/roles")
+    @PreAuthorize("@PreAuth.canDeleteRoles()")
+    public ResponseEntity<Map<String, Object>> deleteRoles(@RequestBody Set<String> roleNames) {
+        return adminService.deleteRoles(roleNames);
+    }
 }

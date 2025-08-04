@@ -996,12 +996,17 @@ public class AdminService {
         var resolvedPermissionsResult = resolvePermissions(roleUpdationResult.getPermissions());
         var roleNamesToRoleMap = roleRepo.findAllById(roleUpdationResult.getRoleNames()).stream().collect(Collectors.toMap(RoleModel::getRoleName, Function.identity()));
         var updatedRoles = new HashSet<RoleModel>();
+        var systemRolesNames = new HashSet<String>();
         var rolesToWhichWeHaveToRevokeTokensOfUsersHavingTheseRoles = new HashSet<String>();
         var notFoundRoles = new HashSet<String>();
         dtos.forEach(dto -> {
             var roleToUpdate = roleNamesToRoleMap.get(dto.getRoleName());
             if (Objects.isNull(roleToUpdate)) {
                 notFoundRoles.add(dto.getRoleName());
+                return;
+            }
+            if (roleToUpdate.isSystemRole()) {
+                systemRolesNames.add(roleToUpdate.getRoleName());
                 return;
             }
             var isUpdated = false;
@@ -1026,6 +1031,7 @@ public class AdminService {
         if (!notFoundRoles.isEmpty()) mapOfErrors.put("roles_not_found", notFoundRoles);
         if (!resolvedPermissionsResult.getMissingPermissions().isEmpty())
             mapOfErrors.put("missing_permissions", resolvedPermissionsResult.getMissingPermissions());
+        if (!systemRolesNames.isEmpty()) mapOfErrors.put("system_roles_cannot_be_updated", systemRolesNames);
         return new RoleUpdationWithNewDetailsResultDto(mapOfErrors, updatedRoles, rolesToWhichWeHaveToRevokeTokensOfUsersHavingTheseRoles);
     }
 }

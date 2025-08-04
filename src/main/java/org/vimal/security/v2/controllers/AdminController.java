@@ -72,4 +72,10 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> deleteRolesForce(@RequestBody Set<String> roleNames) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return adminService.deleteRolesForce(roleNames);
     }
+
+    @GetMapping
+    @PreAuthorize("@PreAuth.canReadRoles()")
+    public ResponseEntity<Map<String, Object>> getRoles(@RequestBody Set<String> roleNames) {
+        return adminService.getRoles(roleNames);
+    }
 }

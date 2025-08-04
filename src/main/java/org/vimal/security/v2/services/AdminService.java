@@ -81,7 +81,7 @@ public class AdminService {
                         return toUserModel(dto, rolesToAssign, creator.getUserModel());
                     })
                     .collect(Collectors.toSet());
-            return ResponseEntity.ok(Map.of("message", "Users created successfully", "created_users", userRepo.saveAll(newUsers).stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
+            return ResponseEntity.ok(Map.of("created_users", userRepo.saveAll(newUsers).stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
         }
         throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
     }
@@ -388,7 +388,7 @@ public class AdminService {
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             foundByUsernames.addAll(foundByEmails);
             if (!foundByUsernames.isEmpty())
-                return ResponseEntity.ok(Map.of("message", "Users read successfully", "users", foundByUsernames.stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
+                return ResponseEntity.ok(Map.of("users", foundByUsernames.stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
             return ResponseEntity.ok(Map.of("message", "No users to read"));
         }
         throw new ServiceUnavailableException("Reading users is currently disabled. Please try again later");
@@ -433,7 +433,7 @@ public class AdminService {
                 jwtUtility.revokeTokens(userUpdationWithNewDetailsResult.getUsersToWhichWeHaveToRevokeTokens());
                 userUpdationWithNewDetailsResult.getUpdatedUsers().addAll(userUpdationWithNewDetailsResult.getUsersToWhichWeHaveToRevokeTokens());
             }
-            return ResponseEntity.ok(Map.of("message", "Users updated successfully", "updated_users", userRepo.saveAll(userUpdationWithNewDetailsResult.getUpdatedUsers()).stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
+            return ResponseEntity.ok(Map.of("updated_users", userRepo.saveAll(userUpdationWithNewDetailsResult.getUpdatedUsers()).stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
         }
         throw new ServiceUnavailableException("Updating users is currently disabled. Please try again later");
     }
@@ -693,7 +693,7 @@ public class AdminService {
                 var permissionsToAssign = dto.getPermissions().stream().map(resolvedPermissionsResult.getResolvedPermissionsMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
                 return toRoleModel(dto, permissionsToAssign, creator.getUserModel());
             }).collect(Collectors.toSet());
-            return ResponseEntity.ok(Map.of("message", "Roles created successfully", "created_roles", roleRepo.saveAll(newRoles).stream().map(MapperUtility::toRoleSummaryDto).toList()));
+            return ResponseEntity.ok(Map.of("created_roles", roleRepo.saveAll(newRoles).stream().map(MapperUtility::toRoleSummaryDto).toList()));
         }
         throw new ServiceUnavailableException("Creation of roles is currently disabled. Please try again later");
     }
@@ -873,5 +873,42 @@ public class AdminService {
     private void checkUserCanForceDeleteRoles(String userHighestTopRole) {
         if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_FORCE_DELETE_ROLES_BY_USERS_HAVE_PERMISSION_TO_DELETE_ROLES.name()))
             throw new ServiceUnavailableException("Force deletion of roles is currently disabled. Please try again later");
+    }
+
+    public ResponseEntity<Map<String, Object>> getRoles(Set<String> roleNames) {
+        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+        var userHighestTopRole = getUserHighestTopRole(user);
+        var variant = unleash.getVariant(FeatureFlags.ALLOW_READ_ROLES.name());
+        if (entryCheck(variant, userHighestTopRole)) {
+            checkUserCanRaedRoles(userHighestTopRole);
+            validateInputsSizeForRolesToRead(variant, roleNames);
+            var invalidInputs = getInvalidInputsInRoleDeletionRead(roleNames);
+            if (!invalidInputs.isEmpty())
+                return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+            var roles = roleRepo.findAllById(roleNames);
+            var foundRoleNames = roles.stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
+            roleNames.removeAll(foundRoleNames);
+            if (!roleNames.isEmpty()) return ResponseEntity.badRequest().body(Map.of("not_found_roles", roleNames));
+            if (roles.isEmpty()) return ResponseEntity.ok(Map.of("message", "No roles found"));
+            return ResponseEntity.ok(Map.of("roles", roles.stream().map(MapperUtility::toRoleSummaryDto).toList()));
+        }
+        throw new ServiceUnavailableException("Reading roles is currently disabled. Please try again later");
+    }
+
+    private void checkUserCanRaedRoles(String userHighestTopRole) {
+        if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_READ_ROLES_BY_USERS_HAVE_PERMISSION_TO_READ_ROLES.name()))
+            throw new ServiceUnavailableException("Reading roles is currently disabled. Please try again later");
+    }
+
+    private void validateInputsSizeForRolesToRead(Variant variant,
+                                                  Set<String> roleNames) {
+        if (roleNames.isEmpty()) throw new BadRequestException("No roles to read");
+        if (variant.isEnabled() && variant.getPayload().isPresent()) {
+            var maxRolesToReadAtATime = Integer.parseInt(Objects.requireNonNull(variant.getPayload().get().getValue()));
+            if (maxRolesToReadAtATime < 1) maxRolesToReadAtATime = DEFAULT_MAX_ROLES_TO_READ_AT_A_TIME;
+            if (roleNames.size() > maxRolesToReadAtATime)
+                throw new BadRequestException("Cannot read more than " + maxRolesToReadAtATime + " roles at a time");
+        } else if (roleNames.size() > DEFAULT_MAX_ROLES_TO_READ_AT_A_TIME)
+            throw new BadRequestException("Cannot read more than " + DEFAULT_MAX_ROLES_TO_READ_AT_A_TIME + " roles at a time");
     }
 }

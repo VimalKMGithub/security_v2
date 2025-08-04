@@ -857,12 +857,13 @@ public class AdminService {
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             if (!deleterRolesResult.getNotFoundRoles().isEmpty())
                 mapOfErrors.put("roles_not_found", deleterRolesResult.getNotFoundRoles());
+            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+            if (deleterRolesResult.getRoles().isEmpty())
+                return ResponseEntity.ok(Map.of("message", "No roles to delete"));
             if (deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles() > 0) {
                 roleRepo.deleteUserRolesByRoleNames(deleterRolesResult.getFoundRolesNames());
                 jwtUtility.revokeTokensByUsersIds(deleterRolesResult.getUserIdsThatHaveSomeOfTheseRoles());
             }
-            if (deleterRolesResult.getRoles().isEmpty())
-                return ResponseEntity.ok(Map.of("message", "No roles to delete"));
             roleRepo.deleteAll(deleterRolesResult.getRoles());
             return ResponseEntity.ok(Map.of("message", "Roles deleted successfully"));
         }

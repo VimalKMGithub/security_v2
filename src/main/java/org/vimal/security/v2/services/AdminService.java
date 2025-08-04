@@ -849,7 +849,7 @@ public class AdminService {
         Set<UUID> userIdsThatHaveSomeOfTheseRoles = null;
         if (usersCountThatHaveSomeOfTheseRoles > 0)
             userIdsThatHaveSomeOfTheseRoles = roleRepo.findUserIdsByRoleNames(foundRoleNames);
-        return new RoleDeletionReadResultDto(null, roles, roleNames, foundRoleNames, systemRolesNames, usersCountThatHaveSomeOfTheseRoles, userIdsThatHaveSomeOfTheseRoles);
+        return new RoleDeletionReadResultDto(new HashSet<>(), roles, roleNames, foundRoleNames, systemRolesNames, usersCountThatHaveSomeOfTheseRoles, userIdsThatHaveSomeOfTheseRoles);
     }
 
     public ResponseEntity<Map<String, Object>> deleteRolesForce(Set<String> roleNames) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

@@ -774,7 +774,7 @@ public class AdminService {
                 .build();
     }
 
-    public ResponseEntity<Map<String, Object>> deleteRoles(Set<String> roleNames) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> deleteRoles(Set<String> roleNames) {
         var deleter = UserUtility.getCurrentAuthenticatedUserDetails();
         var deleterHighestTopRole = getUserHighestTopRole(deleter);
         var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_ROLES.name());

@@ -715,7 +715,7 @@ public class AdminService {
             throw new BadRequestException("Cannot create more than " + DEFAULT_MAX_ROLES_TO_CREATE_AT_A_TIME + " roles at a time");
     }
 
-    private RoleCreationResultDto validateInputsForRoleCreation(Set<RoleCreationUpdationDto> dtos) {
+    private RoleCreationUpdationResultDto validateInputsForRoleCreation(Set<RoleCreationUpdationDto> dtos) {
         var invalidInputs = new HashSet<String>();
         var roleNames = new HashSet<String>();
         var duplicateRoleNamesInDtos = new HashSet<String>();
@@ -738,10 +738,10 @@ public class AdminService {
                 if (!dto.getPermissions().isEmpty()) permissions.addAll(dto.getPermissions());
             }
         });
-        return new RoleCreationResultDto(invalidInputs, roleNames, duplicateRoleNamesInDtos, permissions);
+        return new RoleCreationUpdationResultDto(invalidInputs, roleNames, duplicateRoleNamesInDtos, permissions);
     }
 
-    private Map<String, Object> errorsStuffingIfAnyInRoleCreation(RoleCreationResultDto roleCreationResult) {
+    private Map<String, Object> errorsStuffingIfAnyInRoleCreation(RoleCreationUpdationResultDto roleCreationResult) {
         var mapOfErrors = new HashMap<String, Object>();
         if (!roleCreationResult.getInvalidInputs().isEmpty())
             mapOfErrors.put("invalid_inputs", roleCreationResult.getInvalidInputs());

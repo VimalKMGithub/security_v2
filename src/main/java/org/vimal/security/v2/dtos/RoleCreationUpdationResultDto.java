@@ -11,7 +11,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class RoleCreationResultDto {
+public class RoleCreationUpdationResultDto {
     private Set<String> invalidInputs;
     private Set<String> roleNames;
     private Set<String> duplicateRoleNamesInDtos;

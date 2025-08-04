@@ -983,4 +983,43 @@ public class AdminService {
         });
         return new RoleCreationUpdationResultDto(invalidInputs, roleNames, duplicateRoleNamesInDtos, permissions);
     }
+
+    private RoleUpdationWithNewDetailsResultDto getResultOfRoleUpdationWithNewDetails(RoleCreationUpdationResultDto roleUpdationResult,
+                                                                                      Set<RoleCreationUpdationDto> dtos,
+                                                                                      UserDetailsImpl user) {
+        var resolvedPermissionsResult = resolvePermissions(roleUpdationResult.getPermissions());
+        var roleNamesToRoleMap = roleRepo.findAllById(roleUpdationResult.getRoleNames()).stream().collect(Collectors.toMap(RoleModel::getRoleName, Function.identity()));
+        var updatedRoles = new HashSet<RoleModel>();
+        var rolesToWhichWeHaveToRevokeTokensOfUsersHavingTheseRoles = new HashSet<String>();
+        var notFoundRoles = new HashSet<String>();
+        dtos.forEach(dto -> {
+            var roleToUpdate = roleNamesToRoleMap.get(dto.getRoleName());
+            if (Objects.isNull(roleToUpdate)) {
+                notFoundRoles.add(dto.getRoleName());
+                return;
+            }
+            var isUpdated = false;
+            if (dto.getDescription() != null && !dto.getDescription().equals(roleToUpdate.getDescription())) {
+                roleToUpdate.setDescription(dto.getDescription());
+                isUpdated = true;
+            }
+            if (dto.getPermissions() != null) {
+                var permissionsToAssign = dto.getPermissions().stream().map(resolvedPermissionsResult.getResolvedPermissionsMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
+                if (!roleToUpdate.getPermissions().equals(permissionsToAssign)) {
+                    roleToUpdate.setPermissions(permissionsToAssign);
+                    isUpdated = true;
+                    rolesToWhichWeHaveToRevokeTokensOfUsersHavingTheseRoles.add(roleToUpdate.getRoleName());
+                }
+            }
+            if (isUpdated) {
+                roleToUpdate.setUpdatedBy(user.getUsername());
+                updatedRoles.add(roleToUpdate);
+            }
+        });
+        var mapOfErrors = new HashMap<String, Object>();
+        if (!notFoundRoles.isEmpty()) mapOfErrors.put("roles_not_found", notFoundRoles);
+        if (!resolvedPermissionsResult.getMissingPermissions().isEmpty())
+            mapOfErrors.put("missing_permissions", resolvedPermissionsResult.getMissingPermissions());
+        return new RoleUpdationWithNewDetailsResultDto(mapOfErrors, updatedRoles, rolesToWhichWeHaveToRevokeTokensOfUsersHavingTheseRoles);
+    }
 }

@@ -922,21 +922,18 @@ public class AdminService {
             var roleUpdationResult = validateInputsForRoleUpdation(dtos);
             var mapOfErrors = errorsStuffingIfAnyInRoleCreationUpdation(roleUpdationResult);
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
-            var alreadyExistingRoles = roleRepo.findAllById(roleUpdationResult.getRoleNames()).stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
-            if (!alreadyExistingRoles.isEmpty()) mapOfErrors.put("roles_already_exist", alreadyExistingRoles);
-            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
-            var resolvedPermissionsResult = resolvePermissions(roleUpdationResult.getPermissions());
-            if (!resolvedPermissionsResult.getMissingPermissions().isEmpty())
-                mapOfErrors.put("missing_permissions", resolvedPermissionsResult.getMissingPermissions());
-            if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
-            if (dtos.isEmpty()) return ResponseEntity.ok(Map.of("message", "No roles to update"));
-            var updatedRoles = dtos.stream().map(dto -> {
-                if (Objects.isNull(dto.getPermissions()) || dto.getPermissions().isEmpty())
-                    return toRoleModel(dto, new HashSet<>(), user.getUserModel());
-                var permissionsToAssign = dto.getPermissions().stream().map(resolvedPermissionsResult.getResolvedPermissionsMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
-                return toRoleModel(dto, permissionsToAssign, user.getUserModel());
-            }).collect(Collectors.toSet());
-            return ResponseEntity.ok(Map.of("updated_roles", roleRepo.saveAll(updatedRoles).stream().map(MapperUtility::toRoleSummaryDto).toList()));
+            var roleUpdationWithNewDetailsResult = getResultOfRoleUpdationWithNewDetails(roleUpdationResult, dtos, user);
+            if (!roleUpdationWithNewDetailsResult.getMapOfErrors().isEmpty())
+                return ResponseEntity.badRequest().body(roleUpdationWithNewDetailsResult.getMapOfErrors());
+            if (roleUpdationWithNewDetailsResult.getUpdatedRoles().isEmpty())
+                return ResponseEntity.ok(Map.of("message", "No roles to update"));
+            if (!roleUpdationWithNewDetailsResult.getRolesToWhichWeHaveToRevokeTokensOfUsersHavingTheseRoles().isEmpty()) {
+                var userIdsToRevokeTokens = roleRepo.findUserIdsByRoleNames(roleUpdationWithNewDetailsResult.getRolesToWhichWeHaveToRevokeTokensOfUsersHavingTheseRoles());
+                if (!userIdsToRevokeTokens.isEmpty()) {
+                    jwtUtility.revokeTokensByUsersIds(userIdsToRevokeTokens);
+                }
+            }
+            return ResponseEntity.ok(Map.of("updated_roles", roleRepo.saveAll(roleUpdationWithNewDetailsResult.getUpdatedRoles()).stream().map(MapperUtility::toRoleSummaryDto).toList()));
         }
         throw new ServiceUnavailableException("Updating roles is currently disabled. Please try again later");
     }

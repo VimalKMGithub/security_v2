@@ -777,10 +777,30 @@ public class AdminService {
     public ResponseEntity<Map<String, Object>> deleteRoles(Set<String> roleNames) {
         var deleter = UserUtility.getCurrentAuthenticatedUserDetails();
         var deleterHighestTopRole = getUserHighestTopRole(deleter);
+        var deleterRolesResult = deleteRolesResult(roleNames, deleterHighestTopRole);
+        var mapOfErrors = new HashMap<String, Object>();
+        if (!deleterRolesResult.getInvalidInputs().isEmpty())
+            mapOfErrors.put("invalid_inputs", deleterRolesResult.getInvalidInputs());
+        if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+        if (!deleterRolesResult.getNotFoundRoles().isEmpty())
+            mapOfErrors.put("roles_not_found", deleterRolesResult.getNotFoundRoles());
+        if (deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles() > 0)
+            mapOfErrors.put("users_count_that_have_some_of_these_roles", deleterRolesResult.getUsersCountThatHaveSomeOfTheseRoles());
+        if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
+        if (deleterRolesResult.getRoles().isEmpty()) return ResponseEntity.ok(Map.of("message", "No roles to delete"));
+        roleRepo.deleteAll(deleterRolesResult.getRoles());
+        return ResponseEntity.ok(Map.of("message", "Roles deleted successfully"));
+    }
+
+    private RoleDeletionReadResultDto deleteRolesResult(Set<String> roleNames,
+                                                        String userHighestTopRole) {
         var variant = unleash.getVariant(FeatureFlags.ALLOW_DELETE_ROLES.name());
-        if (entryCheck(variant, deleterHighestTopRole)) {
-            checkUserCanDeleteRoles(deleterHighestTopRole);
+        if (entryCheck(variant, userHighestTopRole)) {
+            checkUserCanDeleteRoles(userHighestTopRole);
             validateInputsSizeForRolesToDelete(variant, roleNames);
+            var invalidInputs = getInvalidInputsInRoleDeletionRead(roleNames);
+            if (!invalidInputs.isEmpty()) return new RoleDeletionReadResultDto(invalidInputs, null, null, 0, null);
+            return getRoleDeletionReadResult(roleNames);
         }
         throw new ServiceUnavailableException("Deletion of roles is currently disabled. Please try again later");
     }
@@ -802,6 +822,40 @@ public class AdminService {
             throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_ROLES_TO_DELETE_AT_A_TIME + " roles at a time");
     }
 
+    private Set<String> getInvalidInputsInRoleDeletionRead(Set<String> roleNames) {
+        var invalidInputs = new HashSet<String>();
+        roleNames.remove(null);
+        roleNames.forEach(roleName -> {
+            if (!ValidationUtility.ROLE_AND_PERMISSION_NAME_PATTERN.matcher(roleName).matches()) {
+                invalidInputs.add(roleName);
+            }
+        });
+        return invalidInputs;
+    }
+
+    private RoleDeletionReadResultDto getRoleDeletionReadResult(Set<String> roleNames) {
+        var roles = roleRepo.findAllById(roleNames);
+        var foundRoleNames = roles.stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
+        roleNames.removeAll(foundRoleNames);
+        var usersCountThatHaveSomeOfTheseRoles = roleRepo.countUsersByRoleNames(foundRoleNames);
+        Set<UUID> userIdsThatHaveSomeOfTheseRoles = null;
+        if (usersCountThatHaveSomeOfTheseRoles > 0)
+            userIdsThatHaveSomeOfTheseRoles = roleRepo.findUserIdsByRoleNames(foundRoleNames);
+        return new RoleDeletionReadResultDto(null, roles, roleNames, usersCountThatHaveSomeOfTheseRoles, userIdsThatHaveSomeOfTheseRoles);
+    }
+
     public ResponseEntity<Map<String, Object>> deleteRolesForce(Set<String> roleNames) {
+        var user = UserUtility.getCurrentAuthenticatedUserDetails();
+        var userHighestTopRole = getUserHighestTopRole(user);
+        if (unleash.isEnabled(FeatureFlags.ALLOW_FORCE_DELETE_ROLES.name()) || SystemRoles.TOP_ROLES.getFirst().equals(userHighestTopRole)) {
+            checkUserCanForceDeleteRoles(userHighestTopRole);
+            var roleDeletionResult = deleteRolesResult(roleNames, userHighestTopRole);
+        }
+        throw new ServiceUnavailableException("Force deletion of roles is currently disabled. Please try again later");
+    }
+
+    private void checkUserCanForceDeleteRoles(String userHighestTopRole) {
+        if (Objects.isNull(userHighestTopRole) && !unleash.isEnabled(FeatureFlags.ALLOW_FORCE_DELETE_ROLES_BY_USERS_HAVE_PERMISSION_TO_DELETE_ROLES.name()))
+            throw new ServiceUnavailableException("Force deletion of roles is currently disabled. Please try again later");
     }
 }

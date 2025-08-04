@@ -801,4 +801,7 @@ public class AdminService {
         } else if (roleNames.size() > DEFAULT_MAX_ROLES_TO_DELETE_AT_A_TIME)
             throw new BadRequestException("Cannot delete more than " + DEFAULT_MAX_ROLES_TO_DELETE_AT_A_TIME + " roles at a time");
     }
+
+    public ResponseEntity<Map<String, Object>> deleteRolesForce(Set<String> roleNames) {
+    }
 }

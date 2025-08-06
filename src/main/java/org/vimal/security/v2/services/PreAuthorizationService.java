@@ -60,8 +60,11 @@ public class PreAuthorizationService {
     }
 
     public boolean hasAnyAuthority(Set<String> authorities) {
-        return UserUtility.getAuthenticationOfCurrentAuthenticatedUser().getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(authorities::contains);
+        for (GrantedAuthority grantedAuthority : UserUtility.getAuthenticationOfCurrentAuthenticatedUser().getAuthorities()) {
+            if (authorities.contains(grantedAuthority.getAuthority())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

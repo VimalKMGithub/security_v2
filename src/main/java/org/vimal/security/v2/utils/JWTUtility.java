@@ -19,7 +19,6 @@ import org.vimal.security.v2.converter.RefreshTokenRandomConverter;
 import org.vimal.security.v2.converter.RefreshTokenStaticConverter;
 import org.vimal.security.v2.exceptions.BadRequestException;
 import org.vimal.security.v2.impls.UserDetailsImpl;
-import org.vimal.security.v2.models.PermissionModel;
 import org.vimal.security.v2.models.UserModel;
 import org.vimal.security.v2.repos.UserRepo;
 import org.vimal.security.v2.services.RedisService;
@@ -38,7 +37,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Component
 public class JWTUtility {
@@ -101,18 +99,20 @@ public class JWTUtility {
         claims.put(AccessTokenClaims.USERNAME.name(), user.getUsername());
         claims.put(AccessTokenClaims.EMAIL.name(), user.getEmail());
         claims.put(AccessTokenClaims.REAL_EMAIL.name(), user.getRealEmail());
-        claims.put(AccessTokenClaims.AUTHORITIES.name(), user.getRoles().stream()
-                .flatMap(role ->
-                        Stream.concat(
-                                Stream.of(role.getRoleName()),
-                                role.getPermissions().stream().map(PermissionModel::getPermissionName)
-                        )
-                )
-                .collect(Collectors.toSet()));
+        var authorities = new HashSet<String>();
+        for (var role : user.getRoles()) {
+            authorities.add(role.getRoleName());
+            for (var permission : role.getPermissions()) {
+                authorities.add(permission.getPermissionName());
+            }
+        }
+        claims.put(AccessTokenClaims.AUTHORITIES.name(), authorities);
         claims.put(AccessTokenClaims.MFA_ENABLED.name(), user.isMfaEnabled());
-        claims.put(AccessTokenClaims.MFA_METHODS.name(), user.getEnabledMfaMethods().stream()
-                .map(UserModel.MfaType::name)
-                .collect(Collectors.toSet()));
+        var mfaMethods = new HashSet<String>();
+        for (var mfaType : user.getEnabledMfaMethods()) {
+            mfaMethods.add(mfaType.name());
+        }
+        claims.put(AccessTokenClaims.MFA_METHODS.name(), mfaMethods);
         claims.put(AccessTokenClaims.ISSUED_AT.name(), Instant.now().toString());
         claims.put(AccessTokenClaims.EXPIRATION.name(), Instant.now().plusSeconds(ACCESS_TOKEN_EXPIRES_IN_SECONDS).toString());
         return claims;

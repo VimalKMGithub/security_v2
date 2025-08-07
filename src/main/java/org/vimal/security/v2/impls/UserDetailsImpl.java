@@ -8,9 +8,8 @@ import org.vimal.security.v2.models.UserModel;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class UserDetailsImpl implements UserDetails {
     @Getter
@@ -34,12 +33,14 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     private Set<? extends GrantedAuthority> computeAuthorities(UserModel user) {
-        return user.getRoles().stream()
-                .flatMap(role -> Stream.concat(
-                        Stream.of(new SimpleGrantedAuthority(role.getRoleName())),
-                        role.getPermissions().stream().map(permission -> new SimpleGrantedAuthority(permission.getPermissionName()))
-                ))
-                .collect(Collectors.toSet());
+        var authorities = new HashSet<SimpleGrantedAuthority>();
+        for (var role : user.getRoles()) {
+            authorities.add(new SimpleGrantedAuthority(role.getRoleName()));
+            for (var permission : role.getPermissions()) {
+                authorities.add(new SimpleGrantedAuthority(permission.getPermissionName()));
+            }
+        }
+        return authorities;
     }
 
     @Override

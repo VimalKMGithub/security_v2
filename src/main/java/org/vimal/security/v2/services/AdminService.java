@@ -136,14 +136,14 @@ public class AdminService {
             if (dto.getEmail() != null && ValidationUtility.EMAIL_PATTERN.matcher(dto.getEmail()).matches() && !emails.add(dto.getEmail()))
                 duplicateEmailsInDtos.add(dto.getEmail());
             if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
-                dto.setRoles(cleanSet(dto.getRoles()));
+                dto.setRoles(cleanStringSet(dto.getRoles()));
                 if (!dto.getRoles().isEmpty()) roles.addAll(dto.getRoles());
             }
         }
         return new UserCreationResultDto(invalidInputs, usernames, emails, duplicateUsernamesInDtos, duplicateEmailsInDtos, roles);
     }
 
-    private Set<String> cleanSet(Set<String> set) {
+    private Set<String> cleanStringSet(Set<String> set) {
         var result = new HashSet<String>();
         for (var s : set) {
             if (s != null && !s.isBlank()) {

@@ -128,7 +128,7 @@ public class AdminService {
         var usernames = new HashSet<String>();
         var emails = new HashSet<String>();
         dtos.remove(null);
-        dtos.forEach(dto -> {
+        for (var dto : dtos) {
             var invalidInputsForThisDto = UserUtility.validateInputs(dto);
             if (!invalidInputsForThisDto.isEmpty()) invalidInputs.addAll(invalidInputsForThisDto);
             if (dto.getUsername() != null && ValidationUtility.USERNAME_PATTERN.matcher(dto.getUsername()).matches() && !usernames.add(dto.getUsername()))
@@ -136,11 +136,21 @@ public class AdminService {
             if (dto.getEmail() != null && ValidationUtility.EMAIL_PATTERN.matcher(dto.getEmail()).matches() && !emails.add(dto.getEmail()))
                 duplicateEmailsInDtos.add(dto.getEmail());
             if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
-                dto.setRoles(dto.getRoles().stream().filter(r -> r != null && !r.isBlank()).collect(Collectors.toSet()));
+                dto.setRoles(cleanSet(dto.getRoles()));
                 if (!dto.getRoles().isEmpty()) roles.addAll(dto.getRoles());
             }
-        });
+        }
         return new UserCreationResultDto(invalidInputs, usernames, emails, duplicateUsernamesInDtos, duplicateEmailsInDtos, roles);
+    }
+
+    private Set<String> cleanSet(Set<String> set) {
+        var result = new HashSet<String>();
+        for (var s : set) {
+            if (s != null && !s.isBlank()) {
+                result.add(s);
+            }
+        }
+        return result;
     }
 
     private Map<String, Object> errorsStuffingIfAny(UserCreationResultDto userCreationResult,

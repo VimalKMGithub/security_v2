@@ -36,7 +36,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Component
 public class JWTUtility {
@@ -211,8 +210,16 @@ public class JWTUtility {
         tokenUser.setEmail(claims.get(AccessTokenClaims.EMAIL.name(), String.class));
         tokenUser.setRealEmail(claims.get(AccessTokenClaims.REAL_EMAIL.name(), String.class));
         tokenUser.setMfaEnabled(claims.get(AccessTokenClaims.MFA_ENABLED.name(), Boolean.class));
-        tokenUser.setEnabledMfaMethods(((List<String>) claims.get(AccessTokenClaims.MFA_METHODS.name(), List.class)).stream().map(UserModel.MfaType::valueOf).collect(Collectors.toSet()));
-        return new UserDetailsImpl(tokenUser, ((List<String>) claims.get(AccessTokenClaims.AUTHORITIES.name(), List.class)).stream().map(SimpleGrantedAuthority::new).collect(Collectors.toSet()));
+        var mfaMethods = new HashSet<UserModel.MfaType>();
+        for (var mfaMethod : (List<String>) claims.get(AccessTokenClaims.MFA_METHODS.name(), List.class)) {
+            mfaMethods.add(UserModel.MfaType.valueOf(mfaMethod));
+        }
+        tokenUser.setEnabledMfaMethods(mfaMethods);
+        var authorities = new HashSet<SimpleGrantedAuthority>();
+        for (var authority : (List<String>) claims.get(AccessTokenClaims.AUTHORITIES.name(), List.class)) {
+            authorities.add(new SimpleGrantedAuthority(authority));
+        }
+        return new UserDetailsImpl(tokenUser, authorities);
     }
 
     private String getEncryptedJWTIdKey(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

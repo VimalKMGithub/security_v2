@@ -74,13 +74,15 @@ public class AdminService {
                 mapOfErrors.put("missing_roles", resolvedRolesResult.getMissingRoles());
             if (!mapOfErrors.isEmpty()) return ResponseEntity.badRequest().body(mapOfErrors);
             if (dtos.isEmpty()) return ResponseEntity.ok(Map.of("message", "No users to create"));
-            var newUsers = dtos.stream().map(dto -> {
-                        if (Objects.isNull(dto.getRoles()) || dto.getRoles().isEmpty())
-                            return toUserModel(dto, new HashSet<>(), creator.getUserModel());
-                        var rolesToAssign = dto.getRoles().stream().map(resolvedRolesResult.getResolvedRolesMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
-                        return toUserModel(dto, rolesToAssign, creator.getUserModel());
-                    })
-                    .collect(Collectors.toSet());
+            var newUsers = new HashSet<UserModel>();
+            for (var dto : dtos) {
+                if (Objects.isNull(dto.getRoles()) || dto.getRoles().isEmpty())
+                    newUsers.add(toUserModel(dto, new HashSet<>(), creator.getUserModel()));
+                else {
+                    var rolesToAssign = dto.getRoles().stream().map(resolvedRolesResult.getResolvedRolesMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());
+                    newUsers.add(toUserModel(dto, rolesToAssign, creator.getUserModel()));
+                }
+            }
             return ResponseEntity.ok(Map.of("created_users", userRepo.saveAll(newUsers).stream().map(MapperUtility::toUserSummaryToCompanyUsersDto).toList()));
         }
         throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");

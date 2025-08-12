@@ -93,11 +93,17 @@ public class AdminService {
     }
 
     private String getUserHighestTopRole(Set<? extends GrantedAuthority> authorities) {
-        return authorities.stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(SystemRoles.TOP_ROLES::contains)
-                .min(Comparator.comparingInt(SystemRoles.TOP_ROLES::indexOf))
-                .orElse(null);
+        String bestRole = null;
+        var bestPriority = Integer.MAX_VALUE;
+        for (GrantedAuthority authority : authorities) {
+            var role = authority.getAuthority();
+            var priority = SystemRoles.ROLE_PRIORITY_MAP.get(role);
+            if (priority != null && priority < bestPriority) {
+                bestPriority = priority;
+                bestRole = role;
+            }
+        }
+        return bestRole;
     }
 
     private boolean entryCheck(Variant variant,

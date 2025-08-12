@@ -13,10 +13,7 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
-import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
-import org.springframework.security.crypto.scrypt.SCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
@@ -27,7 +24,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.vimal.security.v2.utils.IsServerUpFilterUtility;
 import org.vimal.security.v2.utils.JWTFilterUtility;
 
-import java.util.HashMap;
 import java.util.List;
 
 @Configuration
@@ -87,12 +83,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        var defaultEncodingId = "argon2";
-        var encoders = new HashMap<String, PasswordEncoder>();
-        encoders.put(defaultEncodingId, new Argon2PasswordEncoder(16, 32, 1, 65536, 3));
-        encoders.put("pbkdf2", Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8());
-        encoders.put("scrypt", SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8());
-        return new DelegatingPasswordEncoder(defaultEncodingId, encoders);
+        return new Argon2PasswordEncoder(16, 32, 2, 65536, 3);
     }
 
     @Bean

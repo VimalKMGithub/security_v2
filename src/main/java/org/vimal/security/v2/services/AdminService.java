@@ -279,11 +279,11 @@ public class AdminService {
         var usernames = new HashSet<String>();
         var ownUserInInputs = new HashSet<String>();
         usernamesOrEmails.remove(null);
-        usernamesOrEmails.forEach(identifier -> {
+        for (var identifier : usernamesOrEmails) {
             if (ValidationUtility.USERNAME_PATTERN.matcher(identifier).matches()) usernames.add(identifier);
             else if (ValidationUtility.EMAIL_PATTERN.matcher(identifier).matches()) emails.add(identifier);
             else invalidInputs.add(identifier);
-        });
+        }
         if (usernames.contains(user.getUsername())) ownUserInInputs.add(user.getUsername());
         if (usernames.contains(user.getUserModel().getEmail())) ownUserInInputs.add(user.getUserModel().getEmail());
         return new UserDeletionReadInputResultDto(invalidInputs, usernames, emails, ownUserInInputs);

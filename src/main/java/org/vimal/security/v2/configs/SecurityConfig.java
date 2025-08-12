@@ -29,7 +29,6 @@ import org.vimal.security.v2.utils.JWTFilterUtility;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -89,7 +88,7 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         var defaultEncodingId = "argon2";
-        Map<String, PasswordEncoder> encoders = new HashMap<>();
+        var encoders = new HashMap<String, PasswordEncoder>();
         encoders.put(defaultEncodingId, new Argon2PasswordEncoder(16, 32, 1, 65536, 3));
         encoders.put("pbkdf2", Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8());
         encoders.put("scrypt", SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8());

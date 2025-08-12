@@ -154,9 +154,7 @@ public class AdminService {
     private Set<String> cleanStringSet(Set<String> set) {
         var result = new HashSet<String>();
         for (var s : set) {
-            if (s != null && !s.isBlank()) {
-                result.add(s);
-            }
+            if (s != null && !s.isBlank()) result.add(s);
         }
         return result;
     }

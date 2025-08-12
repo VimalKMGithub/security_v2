@@ -194,10 +194,10 @@ public class AdminService {
             return new ResolvedRolesResultDto(new HashMap<>(), new HashSet<>());
         var foundRoles = roleRepo.findAllById(roles);
         var resolvedRolesMap = new HashMap<String, RoleModel>();
-        foundRoles.forEach(role -> {
+        for (var role : foundRoles) {
             roles.remove(role.getRoleName());
             resolvedRolesMap.put(role.getRoleName(), role);
-        });
+        }
         return new ResolvedRolesResultDto(resolvedRolesMap, roles);
     }
 

@@ -94,13 +94,8 @@ public class SecurityConfig {
                 "http://127.0.0.1:*"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of(
-                "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With",
-                "X-XSRF-TOKEN", "If-Modified-Since", "Cache-Control"
-        ));
-        configuration.setExposedHeaders(List.of(
-                "Content-Disposition", "X-XSRF-TOKEN", "Authorization", "X-Total-Count", "Location"
-        ));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With", "X-XSRF-TOKEN", "If-Modified-Since", "Cache-Control"));
+        configuration.setExposedHeaders(List.of("Content-Disposition", "X-XSRF-TOKEN", "Authorization", "X-Total-Count", "Location"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
         var source = new UrlBasedCorsConfigurationSource();

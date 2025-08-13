@@ -17,10 +17,8 @@ import org.vimal.security.v2.repos.PermissionRepo;
 import org.vimal.security.v2.repos.RoleRepo;
 import org.vimal.security.v2.repos.UserRepo;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -44,19 +42,49 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
     }
 
     private void initializeSystemPermissionsIfAbsent() {
-        var permissionNames = Arrays.stream(SystemPermissions.values()).map(SystemPermissions::name).collect(Collectors.toSet());
-        var existingPermissions = permissionRepo.findAllById(permissionNames).stream().map(PermissionModel::getPermissionName).collect(Collectors.toSet());
-        var missingPermissions = permissionNames.stream().filter(name -> !existingPermissions.contains(name)).collect(Collectors.toSet());
-        var permissionsToCreate = missingPermissions.stream().map(name -> PermissionModel.builder().permissionName(name).systemPermission(true).createdBy("SYSTEM").updatedBy("SYSTEM").build()).collect(Collectors.toSet());
+        var permissionNames = new HashSet<String>();
+        for (SystemPermissions permission : SystemPermissions.values()) permissionNames.add(permission.name());
+        var existingPermissions = new HashSet<String>();
+        for (PermissionModel p : permissionRepo.findAllById(permissionNames))
+            existingPermissions.add(p.getPermissionName());
+        var permissionsToCreate = new HashSet<PermissionModel>();
+        for (String name : permissionNames)
+            if (!existingPermissions.contains(name)) {
+                permissionsToCreate.add(PermissionModel.builder()
+                        .permissionName(name)
+                        .systemPermission(true)
+                        .createdBy("SYSTEM")
+                        .updatedBy("SYSTEM")
+                        .build());
+            }
         if (!permissionsToCreate.isEmpty()) permissionRepo.saveAll(permissionsToCreate);
     }
 
     private void initializeSystemRolesIfAbsent() {
-        var roleNames = Arrays.stream(SystemRoles.values()).map(SystemRoles::name).collect(Collectors.toSet());
-        var existingRoles = roleRepo.findAllById(roleNames).stream().map(RoleModel::getRoleName).collect(Collectors.toSet());
-        var missingRoles = roleNames.stream().filter(name -> !existingRoles.contains(name)).collect(Collectors.toSet());
-        var rolesToCreate = missingRoles.stream().map(name -> RoleModel.builder().roleName(name).systemRole(true).createdBy("SYSTEM").updatedBy("SYSTEM").build()).collect(Collectors.toSet());
-        if (!rolesToCreate.isEmpty()) roleRepo.saveAll(rolesToCreate);
+        Set<String> roleNames = new HashSet<>();
+        for (SystemRoles role : SystemRoles.values()) {
+            roleNames.add(role.name());
+        }
+        Set<String> existingRoles = new HashSet<>();
+        for (RoleModel r : roleRepo.findAllById(roleNames)) {
+            existingRoles.add(r.getRoleName());
+        }
+        Set<RoleModel> rolesToCreate = new HashSet<>();
+        for (String name : roleNames) {
+            if (!existingRoles.contains(name)) {
+                rolesToCreate.add(
+                        RoleModel.builder()
+                                .roleName(name)
+                                .systemRole(true)
+                                .createdBy("SYSTEM")
+                                .updatedBy("SYSTEM")
+                                .build()
+                );
+            }
+        }
+        if (!rolesToCreate.isEmpty()) {
+            roleRepo.saveAll(rolesToCreate);
+        }
     }
 
     private void assignPermissionsToRoles() {

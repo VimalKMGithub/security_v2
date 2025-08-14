@@ -18,6 +18,7 @@ import org.vimal.security.v2.repos.PermissionRepo;
 import org.vimal.security.v2.repos.RoleRepo;
 import org.vimal.security.v2.repos.UserRepo;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -37,7 +38,6 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
         log.info("Initializing system permissions, roles, and default users...");
         initializeSystemPermissionsIfAbsent();
         initializeSystemRolesIfAbsent();
-        assignPermissionsToRoles();
         initializeDefaultUsersIfAbsent();
         log.info("System permissions, roles, and default users initialized successfully.");
     }
@@ -51,10 +51,10 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
         for (PermissionModel p : permissionRepo.findAllById(permissionNames)) {
             existingPermissions.add(p.getPermissionName());
         }
-        var permissionsToCreate = new HashSet<PermissionModel>();
+        var newPermissions = new HashSet<PermissionModel>();
         for (String name : permissionNames) {
             if (!existingPermissions.contains(name)) {
-                permissionsToCreate.add(PermissionModel.builder()
+                newPermissions.add(PermissionModel.builder()
                         .permissionName(name)
                         .systemPermission(true)
                         .createdBy("SYSTEM")
@@ -62,50 +62,53 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
                         .build());
             }
         }
-        if (!permissionsToCreate.isEmpty()) {
-            permissionRepo.saveAll(permissionsToCreate);
+        if (!newPermissions.isEmpty()) {
+            permissionRepo.saveAll(newPermissions);
         }
     }
 
     private void initializeSystemRolesIfAbsent() {
         var roleNames = new HashSet<String>();
+        var rolePermissionsMap = new HashMap<String, Set<String>>();
         for (SystemRoles role : SystemRoles.values()) {
             roleNames.add(role.name());
+            rolePermissionsMap.put(role.name(), new HashSet<>());
+        }
+        rolePermissionsMap.put(SystemRoles.ROLE_MANAGE_USERS.name(), Set.of(SystemPermissions.CAN_CREATE_USER.name(), SystemPermissions.CAN_READ_USER.name(), SystemPermissions.CAN_UPDATE_USER.name(), SystemPermissions.CAN_DELETE_USER.name()));
+        rolePermissionsMap.put(SystemRoles.ROLE_MANAGE_ROLES.name(), Set.of(SystemPermissions.CAN_CREATE_ROLE.name(), SystemPermissions.CAN_READ_ROLE.name(), SystemPermissions.CAN_UPDATE_ROLE.name(), SystemPermissions.CAN_DELETE_ROLE.name()));
+        rolePermissionsMap.put(SystemRoles.ROLE_MANAGE_PERMISSIONS.name(), Set.of(SystemPermissions.CAN_READ_PERMISSION.name()));
+        var allRequiredPermissions = new HashSet<String>();
+        for (var entry : rolePermissionsMap.entrySet()) {
+            allRequiredPermissions.addAll(entry.getValue());
         }
         var existingRoles = new HashSet<String>();
         for (RoleModel r : roleRepo.findAllById(roleNames)) {
             existingRoles.add(r.getRoleName());
         }
-        var rolesToCreate = new HashSet<RoleModel>();
-        for (String name : roleNames) {
-            if (!existingRoles.contains(name)) {
-                rolesToCreate.add(RoleModel.builder()
-                        .roleName(name)
+        var permissionsMap = new HashMap<String, PermissionModel>();
+        for (PermissionModel p : permissionRepo.findAllById(allRequiredPermissions)) {
+            permissionsMap.put(p.getPermissionName(), p);
+        }
+        var newRoles = new HashSet<RoleModel>();
+        for (var entry : rolePermissionsMap.entrySet()) {
+            if (!existingRoles.contains(entry.getKey())) {
+                var permissions = new HashSet<PermissionModel>();
+                for (String permissionName : entry.getValue()) {
+                    if (permissionsMap.containsKey(permissionName)) {
+                        permissions.add(permissionsMap.get(permissionName));
+                    }
+                }
+                newRoles.add(RoleModel.builder()
+                        .roleName(entry.getKey())
                         .systemRole(true)
+                        .permissions(permissions)
                         .createdBy("SYSTEM")
                         .updatedBy("SYSTEM")
                         .build());
             }
         }
-        if (!rolesToCreate.isEmpty()) {
-            roleRepo.saveAll(rolesToCreate);
-        }
-    }
-
-    private void assignPermissionsToRoles() {
-        assignPermissionsToRole(SystemRoles.ROLE_MANAGE_ROLES.name(), Set.of(SystemPermissions.CAN_CREATE_ROLE.name(), SystemPermissions.CAN_READ_ROLE.name(), SystemPermissions.CAN_UPDATE_ROLE.name(), SystemPermissions.CAN_DELETE_ROLE.name()));
-        assignPermissionsToRole(SystemRoles.ROLE_MANAGE_USERS.name(), Set.of(SystemPermissions.CAN_CREATE_USER.name(), SystemPermissions.CAN_READ_USER.name(), SystemPermissions.CAN_UPDATE_USER.name(), SystemPermissions.CAN_DELETE_USER.name()));
-        assignPermissionsToRole(SystemRoles.ROLE_MANAGE_PERMISSIONS.name(), Set.of(SystemPermissions.CAN_READ_PERMISSION.name()));
-    }
-
-    private void assignPermissionsToRole(String role,
-                                         Set<String> permissions) {
-        var roleModel = roleRepo.findById(role).orElseThrow(() -> new RuntimeException("Role not found: " + role));
-        var permissionModels = permissionRepo.findAllById(permissions);
-        if (!permissionModels.isEmpty()) {
-            roleModel.setPermissions(new HashSet<>(permissionModels));
-            roleModel.setUpdatedBy("SYSTEM");
-            roleRepo.save(roleModel);
+        if (!newRoles.isEmpty()) {
+            roleRepo.saveAll(newRoles);
         }
     }
 

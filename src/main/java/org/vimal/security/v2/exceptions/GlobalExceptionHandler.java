@@ -57,11 +57,12 @@ public class GlobalExceptionHandler {
     private List<String> formatStackTrace(Throwable ex) {
         var stackTrace = ex.getStackTrace();
         var stackTraceFormatted = new ArrayList<String>(stackTrace.length);
-        for (StackTraceElement ste : stackTrace)
+        for (StackTraceElement ste : stackTrace) {
             stackTraceFormatted.add(ste.getClassName() + "." +
                     ste.getMethodName() + "(" +
                     ste.getFileName() + ":" +
                     ste.getLineNumber() + ")");
+        }
         return stackTraceFormatted;
     }
 }

@@ -21,13 +21,26 @@ import javax.crypto.NoSuchPaddingException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
-    private static final Set<String> REMOVE_DOTS = Set.of("gmail.com", "googlemail.com");
-    private static final Set<String> REMOVE_ALIAS_PART = Set.of("gmail.com", "googlemail.com", "live.com", "protonmail.com", "hotmail.com", "outlook.com");
+    private static final Set<String> REMOVE_DOTS = Set.of(
+            "gmail.com",
+            "googlemail.com"
+    );
+    private static final Set<String> REMOVE_ALIAS_PART = Set.of(
+            "gmail.com",
+            "googlemail.com",
+            "live.com",
+            "protonmail.com",
+            "hotmail.com",
+            "outlook.com"
+    );
     private static final String EMAIL_VERIFICATION_TOKEN_PREFIX = "SECURITY_V2_EMAIL_VERIFICATION_TOKEN:";
     private static final String EMAIL_VERIFICATION_TOKEN_MAPPING_PREFIX = "SECURITY_V2_EMAIL_VERIFICATION_TOKEN_MAPPING:";
     private static final String FORGOT_PASSWORD_OTP_PREFIX = "SECURITY_V2_FORGOT_PASSWORD_OTP:";
@@ -524,17 +537,17 @@ public class UserService {
             var user = UserUtility.getCurrentAuthenticatedUser();
             var encryptedEmailChangeOTPKey = getEncryptedEmailChangeOTPKey(user);
             var encryptedNewEmailOtp = redisService.get(encryptedEmailChangeOTPKey);
-            if (Objects.isNull(encryptedNewEmailOtp)) throw new BadRequestException("Invalid OTPs");
+            if (encryptedNewEmailOtp == null) throw new BadRequestException("Invalid OTPs");
             if (!emailOTPForEmailChangeRandomConverter.decrypt((String) encryptedNewEmailOtp, String.class).equals(newEmailOtp))
                 throw new BadRequestException("Invalid OTPs");
             var encryptedEmailChangeForOldEmailOTPKey = getEncryptedEmailChangeForOldEmailOTPKey(user);
             var encryptedOldEmailOtp = redisService.get(encryptedEmailChangeForOldEmailOTPKey);
-            if (Objects.isNull(encryptedOldEmailOtp)) throw new BadRequestException("Invalid OTPs");
+            if (encryptedOldEmailOtp == null) throw new BadRequestException("Invalid OTPs");
             if (!emailOTPForEmailChangeForOldEmailRandomConverter.decrypt((String) encryptedOldEmailOtp, String.class).equals(oldEmailOtp))
                 throw new BadRequestException("Invalid OTPs");
             var encryptedEmailKey = getEncryptedEmailKey(user);
             var encryptedNewEmail = redisService.get(encryptedEmailKey);
-            if (Objects.isNull(encryptedNewEmail)) throw new BadRequestException("Invalid email change request");
+            if (encryptedNewEmail == null) throw new BadRequestException("Invalid email change request");
             var newEmail = emailStoreRandomConverter.decrypt((String) encryptedNewEmail, String.class);
             if (user.getEmail().equals(newEmail))
                 throw new BadRequestException("New email cannot be same as current email");

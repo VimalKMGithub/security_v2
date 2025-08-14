@@ -25,9 +25,7 @@ public enum SystemRoles {
 
     private static Map<String, Integer> buildRolePriorityMap() {
         var map = new HashMap<String, Integer>();
-        for (int i = 0; i < SystemRoles.TOP_ROLES.size(); i++) {
-            map.put(SystemRoles.TOP_ROLES.get(i), i);
-        }
+        for (int i = 0; i < SystemRoles.TOP_ROLES.size(); i++) map.put(SystemRoles.TOP_ROLES.get(i), i);
         return Collections.unmodifiableMap(map);
     }
 }

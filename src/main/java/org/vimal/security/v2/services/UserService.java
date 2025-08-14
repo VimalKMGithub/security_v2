@@ -74,15 +74,19 @@ public class UserService {
     public ResponseEntity<Map<String, Object>> register(RegistrationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         if (unleash.isEnabled(FeatureFlags.REGISTRATION_ENABLED.name())) {
             var invalidInputs = UserUtility.validateInputs(dto);
-            if (!invalidInputs.isEmpty())
+            if (!invalidInputs.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
-            if (userRepo.existsByUsername(dto.getUsername()))
+            }
+            if (userRepo.existsByUsername(dto.getUsername())) {
                 throw new BadRequestException("Username: '" + dto.getUsername() + "' is already taken");
-            if (userRepo.existsByEmail(dto.getEmail()))
+            }
+            if (userRepo.existsByEmail(dto.getEmail())) {
                 throw new BadRequestException("Email: '" + dto.getEmail() + "' is already registered");
+            }
             var sanitizedEmail = sanitizeEmail(dto.getEmail());
-            if (userRepo.existsByRealEmail(sanitizedEmail))
+            if (userRepo.existsByRealEmail(sanitizedEmail)) {
                 throw new BadRequestException("Alias version of email: '" + dto.getEmail() + "' is already registered");
+            }
             var user = toUserModel(dto, sanitizedEmail);
             var shouldVerifyRegisteredEmail = unleash.isEnabled(FeatureFlags.REGISTRATION_EMAIL_VERIFICATION.name());
             user.setEmailVerified(!shouldVerifyRegisteredEmail);
@@ -100,10 +104,14 @@ public class UserService {
         var atIndex = lowerCasedEmail.indexOf('@');
         var local = lowerCasedEmail.substring(0, atIndex);
         var domain = lowerCasedEmail.substring(atIndex + 1);
-        if (REMOVE_DOTS.contains(domain)) local = local.replace(".", "");
+        if (REMOVE_DOTS.contains(domain)) {
+            local = local.replace(".", "");
+        }
         if (REMOVE_ALIAS_PART.contains(domain)) {
             var plusIndex = local.indexOf('+');
-            if (plusIndex != -1) local = local.substring(0, plusIndex);
+            if (plusIndex != -1) {
+                local = local.substring(0, plusIndex);
+            }
         }
         return local + "@" + domain;
     }
@@ -125,8 +133,9 @@ public class UserService {
     private UUID generateEmailVerificationToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedEmailVerificationTokenKey = getEncryptedEmailVerificationTokenKey(user);
         var existingEncryptedEmailVerificationToken = redisService.get(encryptedEmailVerificationTokenKey);
-        if (existingEncryptedEmailVerificationToken != null)
+        if (existingEncryptedEmailVerificationToken != null) {
             return emailVerificationTokenRandomConverter.decrypt((String) existingEncryptedEmailVerificationToken, UUID.class);
+        }
         var emailVerificationToken = UUID.randomUUID();
         var encryptedEmailVerificationTokenMappingKey = emailVerificationTokenStaticConverter.encrypt(EMAIL_VERIFICATION_TOKEN_MAPPING_PREFIX + emailVerificationToken);
         try {
@@ -156,7 +165,9 @@ public class UserService {
         }
         var encryptedEmailVerificationTokenMappingKey = getEncryptedEmailVerificationTokenMappingKey(emailVerificationToken);
         var user = userRepo.findById(getUserIdFromEncryptedEmailVerificationTokenMappingKey(encryptedEmailVerificationTokenMappingKey)).orElseThrow(() -> new BadRequestException("Invalid email verification token"));
-        if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
+        if (user.isEmailVerified()) {
+            throw new BadRequestException("Email is already verified");
+        }
         user.setEmailVerified(true);
         user.setUpdatedBy("SELF");
         try {
@@ -172,8 +183,9 @@ public class UserService {
 
     private UUID getUserIdFromEncryptedEmailVerificationTokenMappingKey(String encryptedEmailVerificationTokenMappingKey) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedUserId = redisService.get(encryptedEmailVerificationTokenMappingKey);
-        if (encryptedUserId != null)
+        if (encryptedUserId != null) {
             return emailVerificationTokenRandomConverter.decrypt((String) encryptedUserId, UUID.class);
+        }
         throw new BadRequestException("Invalid email verification token");
     }
 
@@ -191,24 +203,29 @@ public class UserService {
             throw new BadRequestException("Invalid username/email");
         }
         UserModel user;
-        if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches())
+        if (ValidationUtility.USERNAME_PATTERN.matcher(usernameOrEmail).matches()) {
             user = userRepo.findByUsername(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid username"));
-        else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches())
+        } else if (ValidationUtility.EMAIL_PATTERN.matcher(usernameOrEmail).matches()) {
             user = userRepo.findByEmail(usernameOrEmail).orElseThrow(() -> new BadRequestException("Invalid email"));
-        else throw new BadRequestException("Invalid username/email");
+        } else {
+            throw new BadRequestException("Invalid username/email");
+        }
         return user;
     }
 
     private Map<String, String> proceedResendEmailVerificationLink(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (user.isEmailVerified()) throw new BadRequestException("Email is already verified");
+        if (user.isEmailVerified()) {
+            throw new BadRequestException("Email is already verified");
+        }
         mailService.sendEmailAsync(user.getEmail(), "Resending email verification link after registration", "https://godLevelSecurity.com/verifyEmailAfterRegistration?token=" + generateEmailVerificationToken(user), MailService.MailType.LINK);
         return Map.of("message", "Email verification link resent successfully. Please check your email");
     }
 
     public ResponseEntity<Map<String, Object>> forgotPassword(String usernameOrEmail) {
         var user = getUserByUsernameOrEmail(usernameOrEmail);
-        if (!user.isEmailVerified())
+        if (!user.isEmailVerified()) {
             return ResponseEntity.badRequest().body(Map.of("message", "Email is not verified. Please verify your email before resetting password"));
+        }
         var methods = user.getEnabledMfaMethods();
         methods.add(UserModel.MfaType.EMAIL);
         return ResponseEntity.ok(Map.of("message", "Please select a method to receive OTP for password reset", "methods", methods));
@@ -221,8 +238,9 @@ public class UserService {
         var user = getUserByUsernameOrEmail(usernameOrEmail);
         var methods = user.getEnabledMfaMethods();
         methods.add(UserModel.MfaType.EMAIL);
-        if (!user.hasMfaEnabled(methodType))
+        if (!user.hasMfaEnabled(methodType)) {
             throw new BadRequestException("MFA method: '" + method + "' is not enabled for user");
+        }
         switch (methodType) {
             case UserModel.MfaType.EMAIL -> {
                 mailService.sendEmailAsync(user.getEmail(), "OTP for resetting password", generateOTPForForgotPassword(user), MailService.MailType.OTP);
@@ -249,20 +267,24 @@ public class UserService {
     public ResponseEntity<Map<String, Object>> resetPassword(ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         UserUtility.validateTypeExistence(dto.getMethod());
         var invalidInputs = validateInputs(dto);
-        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        if (!invalidInputs.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        }
         var methodType = UserModel.MfaType.valueOf(dto.getMethod().toUpperCase());
         var user = getUserByUsernameOrEmail(dto.getUsernameOrEmail());
         var methods = user.getEnabledMfaMethods();
         methods.add(UserModel.MfaType.EMAIL);
-        if (!user.hasMfaEnabled(methodType))
+        if (!user.hasMfaEnabled(methodType)) {
             throw new BadRequestException("MFA method: '" + dto.getMethod() + "' is not enabled for user");
+        }
         switch (methodType) {
             case UserModel.MfaType.EMAIL -> {
                 return ResponseEntity.ok(verifyEmailOTPForResetPassword(user, dto));
             }
             case UserModel.MfaType.AUTHENTICATOR_APP -> {
-                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP)) {
                     throw new BadRequestException("Authenticator app is not enabled");
+                }
                 return ResponseEntity.ok(verifyAuthenticatorAppTOTPToResetPassword(user, dto));
             }
             default ->
@@ -289,8 +311,9 @@ public class UserService {
         var validationErrors = new HashSet<String>();
         try {
             ValidationUtility.validatePassword(dto.getPassword());
-            if (!dto.getPassword().equals(dto.getConfirmPassword()))
+            if (!dto.getPassword().equals(dto.getConfirmPassword())) {
                 validationErrors.add("New password: '" + dto.getPassword() + "' and confirm password: '" + dto.getConfirmPassword() + "' do not match");
+            }
         } catch (BadRequestException ex) {
             validationErrors.add("New " + ex.getMessage());
         }
@@ -331,8 +354,9 @@ public class UserService {
 
     private Map<String, Object> verifyAuthenticatorAppTOTPToResetPassword(UserModel user,
                                                                           ResetPwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
-        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), dto.getOtpTotp()))
+        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), dto.getOtpTotp())) {
             throw new BadRequestException("Invalid TOTP");
+        }
         selfChangePassword(user, dto.getPassword());
         emailConfirmationOnPasswordReset(user);
         return Map.of("message", "Password reset successful");
@@ -345,17 +369,22 @@ public class UserService {
         } catch (BadRequestException ex) {
             invalidInputs.add("Invalid old password");
         }
-        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        if (!invalidInputs.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        }
         var user = UserUtility.getCurrentAuthenticatedUser();
         if (unleash.isEnabled(FeatureFlags.MFA.name())) {
-            if (UserUtility.shouldDoMFA(user, unleash))
+            if (UserUtility.shouldDoMFA(user, unleash)) {
                 return ResponseEntity.ok(Map.of("message", "Please select a method to receive OTP for password change", "methods", user.getEnabledMfaMethods()));
-            if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name()))
+            }
+            if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
                 return ResponseEntity.ok(Map.of("message", "Please select a method to receive OTP for password change", "methods", Set.of(UserModel.MfaType.EMAIL)));
+            }
         }
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-        if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))
+        if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword())) {
             throw new BadRequestException("Invalid old password");
+        }
         selfChangePassword(user, dto.getPassword());
         emailConfirmationOnSelfPasswordChange(user);
         return ResponseEntity.ok(Map.of("message", "Password reset successful"));
@@ -381,17 +410,20 @@ public class UserService {
                     }
                     throw new BadRequestException("Email MFA is not enabled");
                 } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
-                    if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                    if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name())) {
                         throw new ServiceUnavailableException("Email MFA is disabled globally");
+                    }
                     mailService.sendEmailAsync(user.getEmail(), "OTP for password change", generateOTPForPasswordChange(user), MailService.MailType.OTP);
                     return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
                 } else throw new BadRequestException("Email MFA is not enabled");
             }
             case UserModel.MfaType.AUTHENTICATOR_APP -> {
-                if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+                if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name())) {
                     throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
-                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                }
+                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP)) {
                     throw new BadRequestException("Authenticator app MFA is not enabled");
+                }
                 return Map.of("message", "Please proceed to verify TOTP");
             }
             default ->
@@ -417,7 +449,9 @@ public class UserService {
         } catch (BadRequestException ex) {
             invalidInputs.add("Invalid OTP/TOTP");
         }
-        if (!invalidInputs.isEmpty()) return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        if (!invalidInputs.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("invalid_inputs", invalidInputs));
+        }
         UserUtility.checkMFAEnabledGlobally(unleash);
         var user = UserUtility.getCurrentAuthenticatedUser();
         var methodType = UserModel.MfaType.valueOf(dto.getMethod().toUpperCase());
@@ -429,16 +463,19 @@ public class UserService {
                     }
                     throw new BadRequestException("Email MFA is not enabled");
                 } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
-                    if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                    if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name())) {
                         throw new ServiceUnavailableException("Email MFA is disabled globally");
+                    }
                     return ResponseEntity.ok(verifyEmailOTPToChangePassword(user, dto));
                 } else throw new BadRequestException("Email MFA is not enabled");
             }
             case UserModel.MfaType.AUTHENTICATOR_APP -> {
-                if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+                if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name())) {
                     throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
-                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                }
+                if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP)) {
                     throw new BadRequestException("Authenticator app MFA is not enabled");
+                }
                 return ResponseEntity.ok(verifyAuthenticatorAppTOTPToChangePassword(user, dto));
             }
             default ->
@@ -469,8 +506,9 @@ public class UserService {
     private Map<String, Object> verifyAuthenticatorAppTOTPToChangePassword(UserModel user,
                                                                            ChangePwdDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), dto.getOtpTotp()))
+        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), dto.getOtpTotp())) {
             throw new BadRequestException("Invalid TOTP");
+        }
         selfChangePassword(user, dto.getPassword());
         emailConfirmationOnSelfPasswordChange(user);
         return Map.of("message", "Password change successful");
@@ -480,13 +518,18 @@ public class UserService {
         if (unleash.isEnabled(FeatureFlags.EMAIL_CHANGE_ENABLED.name())) {
             ValidationUtility.validateEmail(newEmail);
             var user = UserUtility.getCurrentAuthenticatedUser();
-            if (user.getEmail().equals(newEmail))
+            if (user.getEmail().equals(newEmail)) {
                 throw new BadRequestException("New email cannot be same as current email");
-            if (userRepo.existsByEmail(newEmail))
+            }
+            if (userRepo.existsByEmail(newEmail)) {
                 throw new BadRequestException("Email: '" + newEmail + "' is already registered");
+            }
             var sanitizedEmail = sanitizeEmail(newEmail);
-            if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
-                throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
+            if (!user.getRealEmail().equals(sanitizedEmail)) {
+                if (userRepo.existsByRealEmail(sanitizedEmail)) {
+                    throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
+                }
+            }
             storeNewEmailForEmailChange(user, newEmail);
             mailService.sendEmailAsync(newEmail, "OTP for email change", generateOTPForEmailChange(user), MailService.MailType.OTP);
             mailService.sendEmailAsync(user.getEmail(), "OTP for email change for old email", generateOTPForEmailChangeForOldEmail(user), MailService.MailType.OTP);
@@ -537,28 +580,42 @@ public class UserService {
             var user = UserUtility.getCurrentAuthenticatedUser();
             var encryptedEmailChangeOTPKey = getEncryptedEmailChangeOTPKey(user);
             var encryptedNewEmailOtp = redisService.get(encryptedEmailChangeOTPKey);
-            if (encryptedNewEmailOtp == null) throw new BadRequestException("Invalid OTPs");
-            if (!emailOTPForEmailChangeRandomConverter.decrypt((String) encryptedNewEmailOtp, String.class).equals(newEmailOtp))
+            if (encryptedNewEmailOtp == null) {
                 throw new BadRequestException("Invalid OTPs");
+            }
+            if (!emailOTPForEmailChangeRandomConverter.decrypt((String) encryptedNewEmailOtp, String.class).equals(newEmailOtp)) {
+                throw new BadRequestException("Invalid OTPs");
+            }
             var encryptedEmailChangeForOldEmailOTPKey = getEncryptedEmailChangeForOldEmailOTPKey(user);
             var encryptedOldEmailOtp = redisService.get(encryptedEmailChangeForOldEmailOTPKey);
-            if (encryptedOldEmailOtp == null) throw new BadRequestException("Invalid OTPs");
-            if (!emailOTPForEmailChangeForOldEmailRandomConverter.decrypt((String) encryptedOldEmailOtp, String.class).equals(oldEmailOtp))
+            if (encryptedOldEmailOtp == null) {
                 throw new BadRequestException("Invalid OTPs");
+            }
+            if (!emailOTPForEmailChangeForOldEmailRandomConverter.decrypt((String) encryptedOldEmailOtp, String.class).equals(oldEmailOtp)) {
+                throw new BadRequestException("Invalid OTPs");
+            }
             var encryptedEmailKey = getEncryptedEmailKey(user);
             var encryptedNewEmail = redisService.get(encryptedEmailKey);
-            if (encryptedNewEmail == null) throw new BadRequestException("Invalid email change request");
+            if (encryptedNewEmail == null) {
+                throw new BadRequestException("Invalid email change request");
+            }
             var newEmail = emailStoreRandomConverter.decrypt((String) encryptedNewEmail, String.class);
-            if (user.getEmail().equals(newEmail))
+            if (user.getEmail().equals(newEmail)) {
                 throw new BadRequestException("New email cannot be same as current email");
-            if (userRepo.existsByEmail(newEmail))
+            }
+            if (userRepo.existsByEmail(newEmail)) {
                 throw new BadRequestException("Email: '" + newEmail + "' is already registered");
+            }
             var sanitizedEmail = sanitizeEmail(newEmail);
-            if (!user.getRealEmail().equals(sanitizedEmail)) if (userRepo.existsByRealEmail(sanitizedEmail))
-                throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
+            if (!user.getRealEmail().equals(sanitizedEmail)) {
+                if (userRepo.existsByRealEmail(sanitizedEmail)) {
+                    throw new BadRequestException("Alias version of email: '" + newEmail + "' is already registered");
+                }
+            }
             user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-            if (!passwordEncoder.matches(password, user.getPassword()))
+            if (!passwordEncoder.matches(password, user.getPassword())) {
                 throw new BadRequestException("Invalid password");
+            }
             var oldEmail = user.getEmail();
             user.setEmail(newEmail);
             user.setRealEmail(sanitizedEmail);
@@ -567,8 +624,9 @@ public class UserService {
                 redisService.deleteAll(Set.of(encryptedEmailChangeOTPKey, encryptedEmailChangeForOldEmailOTPKey, encryptedEmailKey));
             } catch (Exception ignored) {
             }
-            if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_EMAIL_CHANGE.name()))
+            if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_EMAIL_CHANGE.name())) {
                 mailService.sendEmailAsync(oldEmail, "Email change confirmation", "", MailService.MailType.SELF_EMAIL_CHANGE_CONFIRMATION);
+            }
             return Map.of("message", "Email change successful. Please login again to continue", "user", MapperUtility.toUserSummaryDto(userRepo.save(user)));
         }
         throw new ServiceUnavailableException("Email change is currently disabled. Please try again later");
@@ -583,14 +641,17 @@ public class UserService {
             }
             var user = UserUtility.getCurrentAuthenticatedUser();
             if (unleash.isEnabled(FeatureFlags.MFA.name())) {
-                if (UserUtility.shouldDoMFA(user, unleash))
+                if (UserUtility.shouldDoMFA(user, unleash)) {
                     return ResponseEntity.ok(Map.of("message", "Please select a method to receive OTP for account deletion", "methods", user.getEnabledMfaMethods()));
-                if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name()))
+                }
+                if (unleash.isEnabled(FeatureFlags.FORCE_MFA.name())) {
                     return ResponseEntity.ok(Map.of("message", "Please select a method to receive OTP for account deletion", "methods", Set.of(UserModel.MfaType.EMAIL)));
+                }
             }
             user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-            if (!passwordEncoder.matches(password, user.getPassword()))
+            if (!passwordEncoder.matches(password, user.getPassword())) {
                 throw new BadRequestException("Invalid old password");
+            }
             selfDeleteAccount(user);
             return ResponseEntity.ok(Map.of("message", "Account deleted successfully"));
         }
@@ -601,8 +662,9 @@ public class UserService {
         jwtUtility.revokeTokens(Set.of(user));
         user.recordAccountDeletion(true, "SELF");
         userRepo.save(user);
-        if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_ACCOUNT_DELETION.name()))
+        if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_ACCOUNT_DELETION.name())) {
             mailService.sendEmailAsync(user.getEmail(), "Account deletion confirmation", "", MailService.MailType.ACCOUNT_DELETION_CONFIRMATION);
+        }
     }
 
     public Map<String, String> deleteAccountMethodSelection(String method) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
@@ -620,17 +682,20 @@ public class UserService {
                         }
                         throw new BadRequestException("Email MFA is not enabled");
                     } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
-                        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name())) {
                             throw new ServiceUnavailableException("Email MFA is disabled globally");
+                        }
                         mailService.sendEmailAsync(user.getEmail(), "OTP for account deletion", generateOTPForAccountDeletion(user), MailService.MailType.OTP);
                         return Map.of("message", "OTP sent to your registered email address. Please check your email to continue");
                     } else throw new BadRequestException("Email MFA is not enabled");
                 }
                 case UserModel.MfaType.AUTHENTICATOR_APP -> {
-                    if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+                    if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name())) {
                         throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
-                    if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                    }
+                    if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP)) {
                         throw new BadRequestException("Authenticator app MFA is not enabled");
+                    }
                     return Map.of("message", "Please proceed to verify TOTP");
                 }
                 default ->
@@ -670,16 +735,19 @@ public class UserService {
                         }
                         throw new BadRequestException("Email MFA is not enabled");
                     } else if (user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
-                        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name()))
+                        if (!unleash.isEnabled(FeatureFlags.MFA_EMAIL.name())) {
                             throw new ServiceUnavailableException("Email MFA is disabled globally");
+                        }
                         return verifyEmailOTPToDeleteAccount(otpTotp, user);
                     } else throw new BadRequestException("Email MFA is not enabled");
                 }
                 case UserModel.MfaType.AUTHENTICATOR_APP -> {
-                    if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name()))
+                    if (!unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name())) {
                         throw new ServiceUnavailableException("Authenticator app MFA is disabled globally");
-                    if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+                    }
+                    if (!user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP)) {
                         throw new BadRequestException("Authenticator app MFA is not enabled");
+                    }
                     return verifyAuthenticatorAppTOTPToDeleteAccount(otpTotp, user);
                 }
                 default ->
@@ -711,8 +779,9 @@ public class UserService {
     private Map<String, String> verifyAuthenticatorAppTOTPToDeleteAccount(String totp,
                                                                           UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         user = userRepo.findById(user.getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
-        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp))
+        if (!TOTPUtility.verifyTOTP(authenticatorAppSecretRandomConverter.decrypt(user.getAuthAppSecret(), String.class), totp)) {
             throw new BadRequestException("Invalid TOTP");
+        }
         selfDeleteAccount(user);
         return Map.of("message", "Account deleted successfully");
     }
@@ -720,12 +789,14 @@ public class UserService {
     public ResponseEntity<Map<String, Object>> updateDetails(UpdationDto dto) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var user = userRepo.findById(UserUtility.getCurrentAuthenticatedUser().getId()).orElseThrow(() -> new BadRequestException("Invalid user"));
         var userModificationResult = validateAndSet(user, dto);
-        if (!userModificationResult.getInvalidInputs().isEmpty())
+        if (!userModificationResult.getInvalidInputs().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("invalid_inputs", userModificationResult.getInvalidInputs()));
+        }
         if (userModificationResult.isModified()) {
             user.setUpdatedBy("SELF");
-            if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_UPDATE_DETAILS.name()))
+            if (unleash.isEnabled(FeatureFlags.EMAIL_CONFIRMATION_ON_SELF_UPDATE_DETAILS.name())) {
                 mailService.sendEmailAsync(user.getEmail(), "Details updated confirmation", "", MailService.MailType.SELF_UPDATE_DETAILS_CONFIRMATION);
+            }
             if (userModificationResult.isShouldRemoveTokens()) {
                 jwtUtility.revokeTokens(Set.of(user));
                 return ResponseEntity.ok(Map.of("message", "User details updated successfully. Please login again to continue", "user", MapperUtility.toUserSummaryDto(userRepo.save(user))));
@@ -740,8 +811,9 @@ public class UserService {
         var userModificationResult = new UserDetailsResultDto(false, false, new HashSet<>());
         try {
             ValidationUtility.validatePassword(dto.getOldPassword());
-            if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))
+            if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword())) {
                 userModificationResult.getInvalidInputs().add("Invalid old password");
+            }
         } catch (BadRequestException ex) {
             userModificationResult.getInvalidInputs().add("Invalid old password");
         }

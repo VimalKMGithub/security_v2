@@ -138,8 +138,9 @@ public class JWTUtility {
     private UUID generateRefreshToken(UserModel user) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedRefreshTokenKey = getEncryptedRefreshTokenKey(user);
         var existingEncryptedRefreshToken = redisService.get(encryptedRefreshTokenKey);
-        if (existingEncryptedRefreshToken != null)
+        if (existingEncryptedRefreshToken != null) {
             return refreshTokenRandomConverter.decrypt((String) existingEncryptedRefreshToken, UUID.class);
+        }
         var refreshToken = UUID.randomUUID();
         var encryptedRefreshTokenMappingKey = refreshTokenStaticConverter.encrypt(REFRESH_TOKEN_MAPPING_PREFIX + refreshToken);
         try {
@@ -195,15 +196,20 @@ public class JWTUtility {
     @SuppressWarnings("unchecked")
     public UserDetailsImpl verifyAccessToken(String accessToken) throws JoseException, InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var claims = parseToken(decryptToken(accessToken));
-        if (Instant.parse(claims.get(AccessTokenClaims.ISSUED_AT.name(), String.class)).isAfter(Instant.now()))
+        if (Instant.parse(claims.get(AccessTokenClaims.ISSUED_AT.name(), String.class)).isAfter(Instant.now())) {
             throw new BadRequestException("Invalid token");
-        if (Instant.parse(claims.get(AccessTokenClaims.EXPIRATION.name(), String.class)).isBefore(Instant.now()))
+        }
+        if (Instant.parse(claims.get(AccessTokenClaims.EXPIRATION.name(), String.class)).isBefore(Instant.now())) {
             throw new BadRequestException("Invalid token");
+        }
         var userId = claims.get(AccessTokenClaims.USER_ID.name(), String.class);
         var encryptedJWTId = redisService.get(jwtStaticConverter.encrypt(JWT_ID_PREFIX + userId));
-        if (encryptedJWTId == null) throw new BadRequestException("Invalid token");
-        if (!jwtRandomConverter.decrypt((String) encryptedJWTId, String.class).equals(claims.get(AccessTokenClaims.JWT_ID.name(), String.class)))
+        if (encryptedJWTId == null) {
             throw new BadRequestException("Invalid token");
+        }
+        if (!jwtRandomConverter.decrypt((String) encryptedJWTId, String.class).equals(claims.get(AccessTokenClaims.JWT_ID.name(), String.class))) {
+            throw new BadRequestException("Invalid token");
+        }
         var tokenUser = new UserModel();
         tokenUser.setId(UUID.fromString(userId));
         tokenUser.setUsername(claims.get(AccessTokenClaims.USERNAME.name(), String.class));
@@ -252,8 +258,9 @@ public class JWTUtility {
                                         Set<Object> encryptedRefreshTokenKeys) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedRefreshTokens = redisService.getAll(encryptedRefreshTokenKeys);
         for (var encryptedRefreshToken : encryptedRefreshTokens) {
-            if (encryptedRefreshToken != null)
+            if (encryptedRefreshToken != null) {
                 encryptedKeys.add(getEncryptedRefreshTokenMappingKey((String) encryptedRefreshToken));
+            }
         }
         encryptedKeys.addAll(encryptedRefreshTokenKeys);
         redisService.deleteAll(encryptedKeys);
@@ -278,7 +285,9 @@ public class JWTUtility {
 
     private UUID getUserId(String encryptedRefreshTokenMappingKey) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         var encryptedUserId = redisService.get(encryptedRefreshTokenMappingKey);
-        if (encryptedUserId != null) return refreshTokenRandomConverter.decrypt((String) encryptedUserId, UUID.class);
+        if (encryptedUserId != null) {
+            return refreshTokenRandomConverter.decrypt((String) encryptedUserId, UUID.class);
+        }
         throw new BadRequestException("Invalid refresh token");
     }
 
@@ -290,8 +299,9 @@ public class JWTUtility {
         var userId = getUserId(getEncryptedRefreshTokenMappingKeyUnencryptedRefreshToken(refreshToken));
         var encryptedRefreshToken = redisService.get(refreshTokenStaticConverter.encrypt(REFRESH_TOKEN_PREFIX + userId));
         if (encryptedRefreshToken != null) {
-            if (refreshTokenRandomConverter.decrypt((String) encryptedRefreshToken, String.class).equals(refreshToken))
+            if (refreshTokenRandomConverter.decrypt((String) encryptedRefreshToken, String.class).equals(refreshToken)) {
                 return userRepo.findById(userId).orElseThrow(() -> new BadRequestException("Invalid refresh token"));
+            }
             throw new BadRequestException("Invalid refresh token");
         }
         throw new BadRequestException("Invalid refresh token");

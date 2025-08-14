@@ -13,7 +13,6 @@ import org.vimal.security.v2.models.UserModel;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,7 +32,7 @@ public class UserUtility {
     }
 
     private static boolean validateAuthentication(Authentication authentication) {
-        return Objects.nonNull(authentication) && authentication.isAuthenticated() && isPrincipalInstanceOfUserDetailsImpl(authentication);
+        return authentication != null && authentication.isAuthenticated() && isPrincipalInstanceOfUserDetailsImpl(authentication);
     }
 
     private static boolean isPrincipalInstanceOfUserDetailsImpl(Authentication authentication) {

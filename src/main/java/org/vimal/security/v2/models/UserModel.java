@@ -8,7 +8,6 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.vimal.security.v2.enums.FeatureFlags;
 
 import java.time.Instant;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -87,7 +86,9 @@ public class UserModel {
     public void recordAccountDeletion(boolean deleted,
                                       String deletedUndeletedBy) {
         this.accountDeleted = deleted;
-        if (deleted) this.lastAccountDeletedAt = Instant.now();
+        if (deleted) {
+            this.lastAccountDeletedAt = Instant.now();
+        }
         this.lastDeletedUndeletedBy = deletedUndeletedBy;
     }
 
@@ -139,9 +140,7 @@ public class UserModel {
         var now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;
-        if (Objects.isNull(this.passwordChangedAt)) {
-            this.passwordChangedAt = now;
-        }
+        this.passwordChangedAt = now;
     }
 
     @PreUpdate
@@ -153,9 +152,7 @@ public class UserModel {
         this.lastLoginAt = Instant.now();
         this.failedLoginAttempts = 0;
         this.failedMfaAttempts = 0;
-        if (this.accountLocked) {
-            this.accountLocked = false;
-        }
+        this.accountLocked = false;
     }
 
     public void recordFailedLoginAttempt() {

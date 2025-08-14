@@ -22,7 +22,9 @@ public class UserUtility {
 
     public static Authentication getAuthenticationOfCurrentAuthenticatedUser() {
         var authentication = getAuthentication();
-        if (validateAuthentication(authentication)) return authentication;
+        if (validateAuthentication(authentication)) {
+            return authentication;
+        }
         throw new AuthenticationCredentialsNotFoundException("User not authenticated");
     }
 
@@ -95,20 +97,24 @@ public class UserUtility {
         if (user.isMfaEnabled() && !user.getEnabledMfaMethods().isEmpty()) {
             var unleashEmailMFA = unleash.isEnabled(FeatureFlags.MFA_EMAIL.name());
             var unleashAuthenticatorAppMFA = unleash.isEnabled(FeatureFlags.MFA_AUTHENTICATOR_APP.name());
-            if (unleashEmailMFA && user.hasMfaEnabled(UserModel.MfaType.EMAIL)) shouldDoMFA = true;
-            else if (unleashAuthenticatorAppMFA && user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP))
+            if (unleashEmailMFA && user.hasMfaEnabled(UserModel.MfaType.EMAIL)) {
                 shouldDoMFA = true;
+            } else if (unleashAuthenticatorAppMFA && user.hasMfaEnabled(UserModel.MfaType.AUTHENTICATOR_APP)) {
+                shouldDoMFA = true;
+            }
         }
         return shouldDoMFA;
     }
 
     public static void validateTypeExistence(String type) {
-        if (!MFA_METHODS.contains(type.toLowerCase()))
+        if (!MFA_METHODS.contains(type.toLowerCase())) {
             throw new BadRequestException("Unsupported MFA type: " + type + ". Supported types: " + MFA_METHODS);
+        }
     }
 
     public static void checkMFAEnabledGlobally(Unleash unleash) {
-        if (!unleash.isEnabled(FeatureFlags.MFA.name()))
+        if (!unleash.isEnabled(FeatureFlags.MFA.name())) {
             throw new ServiceUnavailableException("MFA is disabled globally");
+        }
     }
 }

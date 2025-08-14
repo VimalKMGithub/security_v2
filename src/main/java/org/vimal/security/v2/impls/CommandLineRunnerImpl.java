@@ -49,14 +49,12 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
             existingPermissions.add(p.getPermissionName());
         var permissionsToCreate = new HashSet<PermissionModel>();
         for (String name : permissionNames)
-            if (!existingPermissions.contains(name)) {
-                permissionsToCreate.add(PermissionModel.builder()
-                        .permissionName(name)
-                        .systemPermission(true)
-                        .createdBy("SYSTEM")
-                        .updatedBy("SYSTEM")
-                        .build());
-            }
+            if (!existingPermissions.contains(name)) permissionsToCreate.add(PermissionModel.builder()
+                    .permissionName(name)
+                    .systemPermission(true)
+                    .createdBy("SYSTEM")
+                    .updatedBy("SYSTEM")
+                    .build());
         if (!permissionsToCreate.isEmpty()) permissionRepo.saveAll(permissionsToCreate);
     }
 

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.vimal.security.v2.configs.PropertiesConfig;
+import org.vimal.security.v2.dtos.SystemUserDto;
 import org.vimal.security.v2.enums.SystemPermissions;
 import org.vimal.security.v2.enums.SystemRoles;
 import org.vimal.security.v2.models.PermissionModel;
@@ -43,41 +44,47 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
 
     private void initializeSystemPermissionsIfAbsent() {
         var permissionNames = new HashSet<String>();
-        for (SystemPermissions permission : SystemPermissions.values()) permissionNames.add(permission.name());
+        for (SystemPermissions permission : SystemPermissions.values()) {
+            permissionNames.add(permission.name());
+        }
         var existingPermissions = new HashSet<String>();
-        for (PermissionModel p : permissionRepo.findAllById(permissionNames))
+        for (PermissionModel p : permissionRepo.findAllById(permissionNames)) {
             existingPermissions.add(p.getPermissionName());
+        }
         var permissionsToCreate = new HashSet<PermissionModel>();
-        for (String name : permissionNames)
-            if (!existingPermissions.contains(name)) permissionsToCreate.add(PermissionModel.builder()
-                    .permissionName(name)
-                    .systemPermission(true)
-                    .createdBy("SYSTEM")
-                    .updatedBy("SYSTEM")
-                    .build());
-        if (!permissionsToCreate.isEmpty()) permissionRepo.saveAll(permissionsToCreate);
+        for (String name : permissionNames) {
+            if (!existingPermissions.contains(name)) {
+                permissionsToCreate.add(PermissionModel.builder()
+                        .permissionName(name)
+                        .systemPermission(true)
+                        .createdBy("SYSTEM")
+                        .updatedBy("SYSTEM")
+                        .build());
+            }
+        }
+        if (!permissionsToCreate.isEmpty()) {
+            permissionRepo.saveAll(permissionsToCreate);
+        }
     }
 
     private void initializeSystemRolesIfAbsent() {
-        Set<String> roleNames = new HashSet<>();
+        var roleNames = new HashSet<String>();
         for (SystemRoles role : SystemRoles.values()) {
             roleNames.add(role.name());
         }
-        Set<String> existingRoles = new HashSet<>();
+        var existingRoles = new HashSet<String>();
         for (RoleModel r : roleRepo.findAllById(roleNames)) {
             existingRoles.add(r.getRoleName());
         }
-        Set<RoleModel> rolesToCreate = new HashSet<>();
+        var rolesToCreate = new HashSet<RoleModel>();
         for (String name : roleNames) {
             if (!existingRoles.contains(name)) {
-                rolesToCreate.add(
-                        RoleModel.builder()
-                                .roleName(name)
-                                .systemRole(true)
-                                .createdBy("SYSTEM")
-                                .updatedBy("SYSTEM")
-                                .build()
-                );
+                rolesToCreate.add(RoleModel.builder()
+                        .roleName(name)
+                        .systemRole(true)
+                        .createdBy("SYSTEM")
+                        .updatedBy("SYSTEM")
+                        .build());
             }
         }
         if (!rolesToCreate.isEmpty()) {
@@ -103,28 +110,30 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
     }
 
     private void initializeDefaultUsersIfAbsent() {
-        createUserIfNotExists(propertiesConfig.getGodUserEmail(), propertiesConfig.getGodUserUsername(), "God", propertiesConfig.getGodUserPassword(), Set.of(SystemRoles.ROLE_GOD.name()));
-        createUserIfNotExists(propertiesConfig.getGlobalAdminUserEmail(), propertiesConfig.getGlobalAdminUserUsername(), "Global Admin", propertiesConfig.getGlobalAdminUserPassword(), Set.of(SystemRoles.ROLE_GLOBAL_ADMIN.name()));
-    }
-
-    private void createUserIfNotExists(String email,
-                                       String username,
-                                       String firstName,
-                                       String password,
-                                       Set<String> roleNames) {
-        if (!userRepo.existsByUsername(username)) {
-            var user = UserModel.builder()
-                    .email(email)
-                    .realEmail(email)
-                    .username(username)
-                    .firstName(firstName)
-                    .password(passwordEncoder.encode(password))
-                    .roles(new HashSet<>(roleRepo.findAllById(roleNames)))
-                    .emailVerified(true)
-                    .createdBy("SYSTEM")
-                    .updatedBy("SYSTEM")
-                    .build();
-            userRepo.save(user);
+        var systemUsers = Set.of(new SystemUserDto(propertiesConfig.getGodUserUsername(), propertiesConfig.getGodUserPassword(), propertiesConfig.getGodUserEmail(), "God", Set.of(SystemRoles.ROLE_GOD.name())), new SystemUserDto(propertiesConfig.getGlobalAdminUserUsername(), propertiesConfig.getGlobalAdminUserPassword(), propertiesConfig.getGlobalAdminUserEmail(), "Global Admin", Set.of(SystemRoles.ROLE_GLOBAL_ADMIN.name())));
+        var existingUsers = userRepo.findByUsernameIn(Set.of(propertiesConfig.getGodUserUsername(), propertiesConfig.getGlobalAdminUserUsername()));
+        var existingUsersUsernames = new HashSet<String>();
+        for (var user : existingUsers) {
+            existingUsersUsernames.add(user.getUsername());
+        }
+        var newUsers = new HashSet<UserModel>();
+        for (var user : systemUsers) {
+            if (!existingUsersUsernames.contains(user.getUsername())) {
+                newUsers.add(UserModel.builder()
+                        .email(user.getEmail())
+                        .realEmail(user.getEmail())
+                        .username(user.getUsername())
+                        .firstName(user.getFirstName())
+                        .password(passwordEncoder.encode(user.getPassword()))
+                        .roles(new HashSet<>(roleRepo.findAllById(user.getRoles())))
+                        .emailVerified(true)
+                        .createdBy("SYSTEM")
+                        .updatedBy("SYSTEM")
+                        .build());
+            }
+        }
+        if (!newUsers.isEmpty()) {
+            userRepo.saveAll(newUsers);
         }
     }
 }

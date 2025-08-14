@@ -16,9 +16,13 @@ public class UnleashServerSideConfig {
 
     @Bean
     public Unleash unleash() {
-        return new DefaultUnleash(UnleashConfig.builder().appName(UNLEASH_APP_NAME).instanceId(UNLEASH_INSTANCE_ID)
-                .unleashAPI(propertiesConfig.getUnleashUrl()).synchronousFetchOnInitialisation(true)
-                .apiKey(propertiesConfig.getUnleashApiToken()).fetchTogglesInterval(5)
+        return new DefaultUnleash(UnleashConfig.builder()
+                .appName(UNLEASH_APP_NAME)
+                .instanceId(UNLEASH_INSTANCE_ID)
+                .unleashAPI(propertiesConfig.getUnleashUrl())
+                .synchronousFetchOnInitialisation(true)
+                .apiKey(propertiesConfig.getUnleashApiToken())
+                .fetchTogglesInterval(5)
                 .build());
     }
 }

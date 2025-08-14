@@ -13,7 +13,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -28,7 +27,7 @@ public class JWTFilterUtility extends OncePerRequestFilter {
                                     FilterChain filterChain) throws IOException {
         try {
             var authorizationHeader = request.getHeader("Authorization");
-            if (Objects.nonNull(authorizationHeader) && authorizationHeader.startsWith(AUTHORIZATION_HEADER_PREFIX) && Objects.isNull(UserUtility.getAuthentication())) {
+            if (authorizationHeader != null && authorizationHeader.startsWith(AUTHORIZATION_HEADER_PREFIX) && UserUtility.getAuthentication() == null) {
                 var userDetails = jwtUtility.verifyAccessToken(authorizationHeader.substring(7));
                 var authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

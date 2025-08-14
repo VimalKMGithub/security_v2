@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.vimal.security.v2.utils.JSONUtility;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +54,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.internalServerError().body(errorResponse);
     }
 
-    public List<String> formatStackTrace(Throwable ex) {
-        return Arrays.stream(ex.getStackTrace()).map(ste -> ste.getClassName() + "." + ste.getMethodName() + "(" + ste.getFileName() + ":" + ste.getLineNumber() + ")").toList();
+    private List<String> formatStackTrace(Throwable ex) {
+        var stackTrace = ex.getStackTrace();
+        var stackTraceFormatted = new ArrayList<String>(stackTrace.length);
+        for (StackTraceElement ste : stackTrace)
+            stackTraceFormatted.add(ste.getClassName() + "." +
+                    ste.getMethodName() + "(" +
+                    ste.getFileName() + ":" +
+                    ste.getLineNumber() + ")");
+        return stackTraceFormatted;
     }
 }

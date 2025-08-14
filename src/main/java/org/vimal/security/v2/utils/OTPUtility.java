@@ -14,9 +14,13 @@ public class OTPUtility {
     }
 
     private static String generateOtp(int length) {
-        if (length < 1) throw new BadRequestException("OTP length must be at least 1");
+        if (length < 1) {
+            throw new BadRequestException("OTP length must be at least 1");
+        }
         var otpChars = new char[length];
-        for (int i = 0; i < length; i++) otpChars[i] = DIGITS.charAt(secureRandom.nextInt(DIGITS.length()));
+        for (int i = 0; i < length; i++) {
+            otpChars[i] = DIGITS.charAt(secureRandom.nextInt(DIGITS.length()));
+        }
         return new String(otpChars);
     }
 }

@@ -76,7 +76,7 @@ public class AdminService {
             if (dtos.isEmpty()) return ResponseEntity.ok(Map.of("message", "No users to create"));
             var newUsers = new HashSet<UserModel>();
             for (var dto : dtos) {
-                if (Objects.isNull(dto.getRoles()) || dto.getRoles().isEmpty())
+                if (dto.getRoles() == null || dto.getRoles().isEmpty())
                     newUsers.add(toUserModel(dto, new HashSet<>(), creator.getUserModel()));
                 else {
                     var rolesToAssign = dto.getRoles().stream().map(resolvedRolesResult.getResolvedRolesMap()::get).filter(Objects::nonNull).collect(Collectors.toSet());

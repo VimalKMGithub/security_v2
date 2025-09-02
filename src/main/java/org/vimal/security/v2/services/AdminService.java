@@ -1100,20 +1100,4 @@ public class AdminService {
         });
         return invalidInputs;
     }
-
-    public Map<Object, Object> createUsersLenient(Set<UserCreationDto> dtos) {
-        var creator = UserUtility.getCurrentAuthenticatedUserDetails();
-        var creatorHighestTopRole = getUserHighestTopRole(creator);
-        var variant = unleash.getVariant(FeatureFlags.ALLOW_CREATE_USERS.name());
-        if (!entryCheck(variant, creatorHighestTopRole)) {
-            throw new ServiceUnavailableException("Creation of new users is currently disabled. Please try again later");
-        }
-        checkUserCanCreateUsers(creatorHighestTopRole);
-        validateDtosSizeForUsersCreation(variant, dtos);
-        var iterator = dtos.iterator();
-        while (iterator.hasNext()) {
-            if (iterator.next() == null) iterator.remove();
-        }
-        return null;
-    }
 }

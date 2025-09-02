@@ -52,26 +52,26 @@ public class AuthenticationController {
         return ResponseEntity.ok(authenticationService.revokeRefreshToken(refreshToken));
     }
 
-    @PostMapping("/MFA/requestTo/toggle")
+    @PostMapping("/mfa/requestTo/toggle")
     public ResponseEntity<Object> requestToToggleMFA(@RequestParam String type,
                                                      @RequestParam String toggle) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, IOException, InvalidKeyException, WriterException {
         return authenticationService.requestToToggleMFA(type, toggle);
     }
 
-    @PostMapping("/MFA/verifyTo/toggle")
+    @PostMapping("/mfa/verifyTo/toggle")
     public ResponseEntity<Map<String, String>> verifyToggleMFA(@RequestParam String type,
                                                                @RequestParam String toggle,
                                                                @RequestParam String otpTotp) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(authenticationService.verifyToggleMFA(type, toggle, otpTotp));
     }
 
-    @PostMapping("/MFA/requestTo/login")
+    @PostMapping("/mfa/requestTo/login")
     public ResponseEntity<Map<String, String>> requestToLoginMFA(@RequestParam String type,
                                                                  @RequestParam String stateToken) throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {
         return ResponseEntity.ok(authenticationService.requestToLoginMFA(type, stateToken));
     }
 
-    @PostMapping("/MFA/verifyTo/login")
+    @PostMapping("/mfa/verifyTo/login")
     public ResponseEntity<Map<String, Object>> verifyMFAToLogin(@RequestParam String type,
                                                                 @RequestParam String stateToken,
                                                                 @RequestParam String otpTotp) throws InvalidAlgorithmParameterException, JoseException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, JsonProcessingException {

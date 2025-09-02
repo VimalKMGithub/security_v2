@@ -90,4 +90,10 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> getPermissions(@RequestBody Set<String> permissionNames) {
         return adminService.getPermissions(permissionNames);
     }
+
+    @PostMapping("/create/users/lenient")
+    @PreAuthorize("@PreAuth.canCreateUsers()")
+    public ResponseEntity<Map<Object, Object>> createUsersLenient(@RequestBody Set<UserCreationDto> dtos) {
+        return ResponseEntity.ok(adminService.createUsersLenient(dtos));
+    }
 }

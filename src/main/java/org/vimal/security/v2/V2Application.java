@@ -5,6 +5,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
 
+import java.util.TimeZone;
+
 import static org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO;
 
 @SpringBootApplication
@@ -13,6 +15,7 @@ import static org.springframework.data.web.config.EnableSpringDataWebSupport.Pag
 public class V2Application {
 
     public static void main(String[] args) {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         SpringApplication.run(V2Application.class, args);
     }
 
